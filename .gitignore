@@ -2,6 +2,8 @@ node_modules
 dist
 .next
 .turbo
+*.tsbuildinfo
+.DS_Store
 
 # Local env (do not commit secrets)
 .env
@@ -13,4 +15,3 @@ npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
