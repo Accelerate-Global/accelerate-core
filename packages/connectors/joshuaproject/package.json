@@ -18,7 +18,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@accelerate-core/connectors": "workspace:*"
+    "@accelerate-core/connectors": "workspace:*",
+    "@accelerate-core/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.13.0"

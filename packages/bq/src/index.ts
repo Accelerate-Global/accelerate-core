@@ -1,8 +1,34 @@
+import { BigQuery } from "@google-cloud/bigquery";
 import { PROJECT_IDS } from "@accelerate-core/shared";
 
 export type SafeSql = string & { readonly __brand: "SafeSql" };
 
 const IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+let _client: BigQuery | null = null;
+
+export function getGcpProjectId(): string {
+  return (
+    process.env.GOOGLE_CLOUD_PROJECT ??
+    process.env.GCP_PROJECT_ID ??
+    process.env.GCLOUD_PROJECT ??
+    PROJECT_IDS.gcpProjectId
+  );
+}
+
+export function getBigQueryDatasetId(): string {
+  return process.env.BIGQUERY_DATASET ?? PROJECT_IDS.bigQueryDataset;
+}
+
+export function getBigQueryLocation(): string {
+  return process.env.BIGQUERY_LOCATION ?? "US";
+}
+
+export function getBigQueryClient(): BigQuery {
+  if (_client) return _client;
+  _client = new BigQuery({ projectId: getGcpProjectId() });
+  return _client;
+}
 
 export function assertSafeIdentifier(name: string, kind: "dataset" | "table" | "column") {
   if (!IDENTIFIER_RE.test(name)) {
@@ -10,7 +36,7 @@ export function assertSafeIdentifier(name: string, kind: "dataset" | "table" | "
   }
 }
 
-// Very conservative SQL guardrails for V1 scaffolding.
+// Very conservative SQL guardrails (V1: read-only).
 export function assertSafeSql(sql: string): asserts sql is SafeSql {
   const trimmed = sql.trim();
 
@@ -20,45 +46,78 @@ export function assertSafeSql(sql: string): asserts sql is SafeSql {
     throw new Error("SQL comments are not allowed");
   }
 
-  // Disallow common DDL/DML keywords (V1: read-only).
   const upper = trimmed.toUpperCase();
   const disallowed = ["INSERT ", "UPDATE ", "DELETE ", "MERGE ", "DROP ", "ALTER ", "CREATE "];
   if (disallowed.some((kw) => upper.includes(kw))) {
     throw new Error("DDL/DML is not allowed");
   }
 
-  // Require SELECT in V1.
   if (!upper.startsWith("SELECT ")) {
     throw new Error("Only SELECT queries are allowed");
   }
 }
 
-export function buildSelectQuery(input: {
-  dataset?: string;
-  table: string;
-  columns?: string[];
+export async function previewRowsFromTable(input: {
+  datasetId?: string;
+  tableId: string;
   limit?: number;
-}): SafeSql {
-  const dataset = input.dataset ?? PROJECT_IDS.bigQueryDataset;
-  assertSafeIdentifier(dataset, "dataset");
-  assertSafeIdentifier(input.table, "table");
+}): Promise<unknown[]> {
+  const projectId = getGcpProjectId();
+  const datasetId = input.datasetId ?? getBigQueryDatasetId();
+  const tableId = input.tableId;
+  const limit = typeof input.limit === "number" ? Math.max(1, Math.min(1000, input.limit)) : 100;
 
-  const cols = (input.columns?.length ? input.columns : ["*"]).map((c) => {
-    if (c === "*") return "*";
-    assertSafeIdentifier(c, "column");
-    return `\`${c}\``;
+  assertSafeIdentifier(datasetId, "dataset");
+  assertSafeIdentifier(tableId, "table");
+
+  const sql = `SELECT * FROM \`${projectId}.${datasetId}.${tableId}\` LIMIT @limit`;
+  assertSafeSql(sql);
+
+  const bq = getBigQueryClient();
+  const [rows] = await bq.query({
+    query: sql,
+    params: { limit },
+    location: getBigQueryLocation()
+  });
+  return rows as unknown[];
+}
+
+export async function loadNdjsonFromGcsToTable(input: {
+  datasetId?: string;
+  tableId: string;
+  gcsUri: string; // gs://bucket/path.ndjson
+}): Promise<{ jobId?: string }> {
+  const datasetId = input.datasetId ?? getBigQueryDatasetId();
+  const tableId = input.tableId;
+
+  assertSafeIdentifier(datasetId, "dataset");
+  assertSafeIdentifier(tableId, "table");
+
+  const bq = getBigQueryClient();
+  const dataset = bq.dataset(datasetId, { location: getBigQueryLocation() });
+  const table = dataset.table(tableId);
+
+  const [job] = await table.load(input.gcsUri, {
+    sourceFormat: "NEWLINE_DELIMITED_JSON",
+    autodetect: true,
+    createDisposition: "CREATE_IF_NEEDED",
+    writeDisposition: "WRITE_TRUNCATE"
   });
 
-  const limit = typeof input.limit === "number" ? Math.max(1, Math.min(10_000, input.limit)) : 100;
+  // `table.load` resolves when the job completes and returns job metadata.
+  const jobId = extractJobId(job);
 
-  const sql = `SELECT ${cols.join(", ")} FROM \`${dataset}.${input.table}\` LIMIT ${limit}`;
-  assertSafeSql(sql);
-  return sql;
+  return { jobId };
 }
 
-export async function runQuery(_sql: SafeSql): Promise<unknown[]> {
-  // TODO(V1): Implement BigQuery client execution via ADC in Cloud Run.
-  // Intentionally unimplemented in scaffold to avoid accidental credentials coupling.
-  return [];
-}
+type JobMetadataLike = {
+  jobReference?: { jobId?: string | null } | null;
+  id?: string | null;
+  jobId?: string | null;
+};
 
+function extractJobId(job: unknown): string | undefined {
+  if (!job || typeof job !== "object") return undefined;
+  const j = job as JobMetadataLike;
+  return j.jobReference?.jobId ?? j.id ?? (typeof j.jobId === "string" ? j.jobId : undefined) ?? undefined;
+}

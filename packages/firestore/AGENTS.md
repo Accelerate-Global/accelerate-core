@@ -19,18 +19,25 @@ Must not live here:
 
 ## Key Files
 - `packages/firestore/src/admin.ts` (Firebase Admin initialization via ADC)
+- `packages/firestore/src/collections.ts` (collection/subcollection names)
 - `packages/firestore/src/runs.ts`
+- `packages/firestore/src/datasets.ts`
+- `packages/firestore/src/datasetVersions.ts`
+- `packages/firestore/src/connectors.ts`
 - `packages/firestore/src/leases.ts`
 
 ## Interfaces / Contracts
-- Collections (V1 placeholder):
+- Collections (V1):
+  - `connectors/{connectorId}`
   - `runs/{runId}`
-  - `datasets/{datasetSlug}`
-  - `connectors/{connectorKey}`
-  - `datasetVersions/{versionId}`
+  - `datasets/{datasetId}`
+  - `dataset_versions/{datasetId}/versions/{versionId}` (versionId is `v000001`, `v000002`, ...)
   - `runLeases/{runId}` (lease lock; worker should use this)
+
+Dataset versioning contract:
+- `datasets/{datasetId}.nextVersionNumber` is incremented to reserve the next version.
+- `datasets/{datasetId}.latestVersionId` points to the latest `dataset_versions/.../versions/{versionId}` doc.
 
 ## Security Notes (Secrets, Authz)
 - No secrets in repo. Cloud Run should use workload identity / ADC.
 - Client-side Firestore access should remain locked down; API/Worker remain the enforcement point.
-

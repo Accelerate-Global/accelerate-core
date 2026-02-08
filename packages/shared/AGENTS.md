@@ -23,9 +23,9 @@ Must not live here:
 
 ## Interfaces / Contracts
 - Exports are consumed as `@accelerate-core/shared`.
-- Constants include project identifiers (GCP/Firebase/BigQuery) and dataset slugs.
+- Constants include project identifiers (GCP/Firebase/BigQuery) and stable `connectorId` / `datasetId` strings.
+- Request contracts are defined with Zod (ex: `CreateRunRequestSchema`, `QueryRequestSchema`).
 
 ## Security Notes (Secrets, Authz)
 - Do not add any secret values here.
 - Allowlist enforcement lives in API/Worker; web may only use public hints for UI.
-

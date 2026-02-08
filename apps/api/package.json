@@ -17,6 +17,7 @@
     "@accelerate-core/firestore": "workspace:*",
     "@accelerate-core/shared": "workspace:*",
     "fastify": "^5.2.1",
+    "google-auth-library": "^10.3.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -24,4 +25,3 @@
     "tsx": "^4.19.2"
   }
 }
-

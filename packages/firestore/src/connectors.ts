@@ -2,7 +2,7 @@ import { getDb } from "./admin";
 import { COLLECTIONS } from "./collections";
 
 export type ConnectorRecord = {
-  key: string;
+  id: string;
   displayName: string;
   description?: string;
   updatedAt: string; // ISO
@@ -12,7 +12,7 @@ export async function upsertConnector(connector: Omit<ConnectorRecord, "updatedA
   const db = getDb();
   await db
     .collection(COLLECTIONS.connectors)
-    .doc(connector.key)
+    .doc(connector.id)
     .set(
       {
         ...connector,
@@ -28,3 +28,9 @@ export async function listConnectors(limit = 100): Promise<ConnectorRecord[]> {
   return snap.docs.map((d) => d.data() as ConnectorRecord);
 }
 
+export async function getConnectorById(id: string): Promise<ConnectorRecord | null> {
+  const db = getDb();
+  const snap = await db.collection(COLLECTIONS.connectors).doc(id).get();
+  if (!snap.exists) return null;
+  return snap.data() as ConnectorRecord;
+}

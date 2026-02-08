@@ -22,14 +22,25 @@ Must not live here:
 ## Key Files
 - `apps/api/src/index.ts` (entrypoint)
 - `apps/api/src/server.ts` (Fastify setup + routes)
-- `apps/api/src/auth.ts` (Firebase ID token verification placeholder + allowlist enforcement)
+- `apps/api/src/auth.ts` (Firebase ID token verification + allowlist enforcement)
+- `apps/api/src/workerClient.ts` (service-to-service kickoff to worker via Cloud Run IAM)
 
 ## Interfaces / Contracts
-HTTP endpoints (stubs in V1 scaffold):
-- `POST /runs`
-- `GET /runs/:id`
-- `POST /query`
-- `POST /exports`
+Authn:
+- All non-health endpoints require `Authorization: Bearer <Firebase ID token>`.
+- Dev-only escape hatch: if `NODE_ENV != "production"` and `DEV_AUTH_EMAIL` is set, token verification is skipped.
+
+HTTP endpoints (V1):
+- `GET /health` and `GET /healthz` (no auth)
+- `POST /runs` (CreateRunRequest: `{ connectorId, datasetId }`) -> `{ id }`
+- `GET /runs` -> `{ runs }` (recent runs for admin UI)
+- `GET /runs/:id` -> `Run`
+- `POST /query` (QueryRequest: `{ datasetId, versionId?, limit? }`) -> `{ rows }` (preview `LIMIT` 100 default)
+- `POST /exports` -> `501` (stub)
+
+Worker kickoff:
+- `POST /runs` best-effort triggers worker via `WORKER_BASE_URL` using Cloud Run IAM.
+- API sends `X-Accelerate-Actor-Email` for allowlist enforcement/auditing in worker.
 
 Admin allowlist (V1 internal-only):
 - Enforced server-side using `ALLOWED_ADMIN_EMAILS` (exact email match, comma-separated).
@@ -41,4 +52,3 @@ Secrets:
 
 Authz:
 - UI hiding is not sufficient. API must enforce admin allowlist on all privileged endpoints.
-

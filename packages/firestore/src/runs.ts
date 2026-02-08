@@ -1,10 +1,11 @@
-import type { Run, RunId, RunStatus } from "@accelerate-core/shared";
+import type { ConnectorId, DatasetId, Run, RunId, RunStatus } from "@accelerate-core/shared";
 import { getDb } from "./admin";
 import { COLLECTIONS } from "./collections";
 
 export async function createRun(input: {
-  connectorKey?: string;
-  datasetSlug?: string;
+  connectorId: ConnectorId;
+  datasetId: DatasetId;
+  createdBy: { uid: string; email: string };
 }): Promise<Run> {
   const db = getDb();
   const ref = db.collection(COLLECTIONS.runs).doc();
@@ -13,8 +14,9 @@ export async function createRun(input: {
     id: ref.id as RunId,
     status: "queued",
     createdAt: new Date().toISOString(),
-    connectorKey: input.connectorKey,
-    datasetSlug: input.datasetSlug
+    createdBy: input.createdBy,
+    connectorId: input.connectorId,
+    datasetId: input.datasetId
   };
 
   await ref.set(run);
@@ -35,3 +37,13 @@ export async function setRunStatus(id: RunId, status: RunStatus): Promise<void> 
   });
 }
 
+export async function updateRun(id: RunId, patch: Partial<Run>): Promise<void> {
+  const db = getDb();
+  await db.collection(COLLECTIONS.runs).doc(id).set(patch, { merge: true });
+}
+
+export async function listRuns(limit = 50): Promise<Run[]> {
+  const db = getDb();
+  const snap = await db.collection(COLLECTIONS.runs).orderBy("createdAt", "desc").limit(limit).get();
+  return snap.docs.map((d) => d.data() as Run);
+}

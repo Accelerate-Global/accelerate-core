@@ -1,4 +1,5 @@
 import { parseAllowedAdminEmails } from "@accelerate-core/shared";
+import { getAdminAuth } from "@accelerate-core/firestore";
 
 export type AuthContext = {
   uid: string;
@@ -28,9 +29,11 @@ export function assertIsAllowedAdmin(email: string) {
   if (!allowed.has(email.toLowerCase())) throw new HttpError(403, "Forbidden");
 }
 
-export async function verifyFirebaseIdToken(_idToken: string): Promise<AuthContext> {
-  // TODO(V1): Implement Firebase ID token verification.
-  throw new HttpError(501, "Auth not implemented");
+export async function verifyFirebaseIdToken(idToken: string): Promise<AuthContext> {
+  const decoded = await getAdminAuth().verifyIdToken(idToken);
+  const email = decoded.email;
+  if (!email) throw new HttpError(401, "Token missing email");
+  return { uid: decoded.uid, email };
 }
 
 export async function getAuthContextFromRequest(input: {
@@ -52,3 +55,16 @@ export async function getAuthContextFromRequest(input: {
   return verifyFirebaseIdToken(token);
 }
 
+export type WorkerAuthMode = "iam" | "firebase";
+
+export function getWorkerAuthMode(): WorkerAuthMode {
+  const raw = process.env.WORKER_AUTH_MODE?.toLowerCase();
+  if (raw === "firebase") return "firebase";
+  return "iam";
+}
+
+export function getActorEmailFromHeaders(headers: Record<string, unknown>): string | null {
+  const value = headers["x-accelerate-actor-email"] ?? headers["X-Accelerate-Actor-Email"];
+  if (typeof value === "string" && value.trim()) return value.trim();
+  return null;
+}

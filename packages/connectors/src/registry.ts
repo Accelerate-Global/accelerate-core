@@ -1,8 +1,8 @@
-import type { Connector, ConnectorKey } from "./types";
+import type { Connector, ConnectorId } from "./types";
 
 export type ConnectorRegistry = {
   register: (connector: Connector) => void;
-  get: (key: ConnectorKey) => Connector | null;
+  get: (id: ConnectorId) => Connector | null;
   list: () => Connector[];
 };
 
@@ -11,16 +11,15 @@ export function createConnectorRegistry(): ConnectorRegistry {
 
   return {
     register: (connector) => {
-      if (!connector.key) throw new Error("connector.key is required");
-      if (map.has(connector.key)) throw new Error(`Connector already registered: ${connector.key}`);
-      map.set(connector.key, connector);
+      if (!connector.id) throw new Error("connector.id is required");
+      if (map.has(connector.id)) throw new Error(`Connector already registered: ${connector.id}`);
+      map.set(connector.id, connector);
     },
-    get: (key) => {
-      return map.get(key) ?? null;
+    get: (id) => {
+      return map.get(id) ?? null;
     },
     list: () => {
-      return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
+      return [...map.values()].sort((a, b) => a.id.localeCompare(b.id));
     }
   };
 }
-

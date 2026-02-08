@@ -23,14 +23,30 @@ Must not live here:
 - `apps/worker/src/index.ts` (entrypoint)
 - `apps/worker/src/server.ts` (Fastify setup + job route)
 - `apps/worker/src/runner.ts` (sequential connector execution)
+- `apps/worker/src/auth.ts` (worker auth mode + allowlist enforcement)
 
 ## Interfaces / Contracts
-HTTP endpoints (stub in V1 scaffold):
+Authn:
+- Default: `WORKER_AUTH_MODE=iam`
+  - Cloud Run IAM is expected to authenticate the caller.
+  - Worker requires `X-Accelerate-Actor-Email` header for allowlist enforcement/auditing.
+- Optional: `WORKER_AUTH_MODE=firebase`
+  - Requires `Authorization: Bearer <Firebase ID token>`.
+  - Dev-only escape hatch: if `NODE_ENV != "production"` and `DEV_AUTH_EMAIL` is set, token verification is skipped.
+
+HTTP endpoints (V1):
 - `POST /run/:runId` triggers connector execution for a run.
 
 Sequential execution contract:
 - Cloud Run deploy should set `concurrency=1` for this service.
 - A Firestore lease lock (`runLeases/{runId}`) provides defense-in-depth to prevent multi-processing.
+
+Artifacts / outputs (V1):
+- Raw NDJSON is written to: `gs://$ARTIFACTS_BUCKET/raw/{connectorId}/{runId}/{datasetId}.ndjson`
+- BigQuery uses "table per version" naming: `{datasetId}__v000001`, `{datasetId}__v000002`, ...
+- Control plane updates:
+  - `runs/{runId}` status + timestamps + `outputs`
+  - `dataset_versions/{datasetId}/versions/{versionId}` and dataset `latestVersionId`
 
 ## Security Notes (Secrets, Authz)
 Secrets:
@@ -39,4 +55,3 @@ Secrets:
 
 Authz:
 - Worker enforces admin allowlist using `ALLOWED_ADMIN_EMAILS` (exact email match).
-

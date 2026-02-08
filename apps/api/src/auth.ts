@@ -1,4 +1,5 @@
 import { parseAllowedAdminEmails } from "@accelerate-core/shared";
+import { getAdminAuth } from "@accelerate-core/firestore";
 
 export type AuthContext = {
   uid: string;
@@ -32,12 +33,11 @@ export function assertIsAllowedAdmin(email: string) {
   }
 }
 
-export async function verifyFirebaseIdToken(_idToken: string): Promise<AuthContext> {
-  // TODO(V1): Verify Firebase ID token using firebase-admin (or Google Identity Platform),
-  // then return { uid, email } from decoded token.
-  //
-  // This scaffold keeps the call site shape but does not implement verification yet.
-  throw new HttpError(501, "Auth not implemented");
+export async function verifyFirebaseIdToken(idToken: string): Promise<AuthContext> {
+  const decoded = await getAdminAuth().verifyIdToken(idToken);
+  const email = decoded.email;
+  if (!email) throw new HttpError(401, "Token missing email");
+  return { uid: decoded.uid, email };
 }
 
 export async function getAuthContextFromRequest(input: {
@@ -59,4 +59,3 @@ export async function getAuthContextFromRequest(input: {
 
   return verifyFirebaseIdToken(token);
 }
-

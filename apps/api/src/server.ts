@@ -8,10 +8,17 @@ import {
   ExportRequestSchema,
   QueryRequestSchema
 } from "@accelerate-core/shared";
-import { assertSafeSql, runQuery } from "@accelerate-core/bq";
-import { createRun, getRunById } from "@accelerate-core/firestore";
+import { previewRowsFromTable } from "@accelerate-core/bq";
+import {
+  createRun,
+  getDatasetById,
+  getDatasetVersionById,
+  getRunById,
+  listRuns
+} from "@accelerate-core/firestore";
 
 import { assertIsAllowedAdmin, getAuthContextFromRequest, HttpError } from "./auth";
+import { kickoffWorkerRun } from "./workerClient";
 
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -25,13 +32,24 @@ export async function buildServer(): Promise<FastifyInstance> {
     void reply.status(statusCode).send({ error: message });
   });
 
+  app.get("/health", async () => {
+    return { ok: true };
+  });
+
   app.get("/healthz", async () => {
     return { ok: true };
   });
 
   // Authn/authz pre-handler (V1: internal-only).
   app.addHook("preHandler", async (req) => {
-    if (req.url === "/healthz" || req.url.startsWith("/healthz?")) return;
+    if (
+      req.url === "/health" ||
+      req.url.startsWith("/health?") ||
+      req.url === "/healthz" ||
+      req.url.startsWith("/healthz?")
+    ) {
+      return;
+    }
     const auth = await getAuthContextFromRequest({
       authorizationHeader: req.headers.authorization
     });
@@ -41,8 +59,25 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   app.post("/runs", async (req) => {
     const body = CreateRunRequestSchema.parse(req.body);
-    const run = await createRun(body);
+    const auth = (req as unknown as { auth: { uid: string; email: string } }).auth;
+    const run = await createRun({
+      connectorId: body.connectorId,
+      datasetId: body.datasetId,
+      createdBy: auth
+    });
+
+    // Kickoff is best-effort. If it fails, the run remains queued.
+    void kickoffWorkerRun({ runId: run.id, actorEmail: auth.email }).catch((err) => {
+      req.log.error({ err, runId: run.id }, "worker kickoff failed");
+    });
+
     return CreateRunResponseSchema.parse({ id: run.id });
+  });
+
+  app.get("/runs", async () => {
+    // V1 internal-only: list recent runs for admin UI.
+    const runs = await listRuns(50);
+    return { runs };
   });
 
   app.get("/runs/:id", async (req) => {
@@ -54,9 +89,20 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   app.post("/query", async (req) => {
     const body = QueryRequestSchema.parse(req.body);
-    const sql = body.sql;
-    assertSafeSql(sql);
-    const rows = await runQuery(sql);
+    const dataset = await getDatasetById(body.datasetId);
+    if (!dataset) throw new HttpError(404, "Dataset not found");
+
+    const versionId = body.versionId ?? dataset.latestVersionId;
+    if (!versionId) throw new HttpError(404, "Dataset has no versions");
+
+    const version = await getDatasetVersionById(body.datasetId, versionId);
+    if (!version) throw new HttpError(404, "Dataset version not found");
+
+    const rows = await previewRowsFromTable({
+      datasetId: version.bigQuery.datasetId,
+      tableId: version.bigQuery.tableId,
+      limit: body.limit ?? 100
+    });
     return { rows };
   });
 

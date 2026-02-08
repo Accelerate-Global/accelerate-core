@@ -6,33 +6,88 @@ export const PROJECT_IDS = {
   firebaseProjectId: "accelerate-global-473318",
   bigQueryDataset: "accelerate_dev",
   // GCS buckets must be globally unique. Prefer appending "-473318" if the base name is taken.
-  artifactsBucketDefault: "accelerate-artifacts-dev-473318",
-  firstDatasetSlug: "pgic_people_groups"
+  artifactsBucketDefault: "accelerate-artifacts-dev",
+  firstDatasetId: "pgic_people_groups"
 } as const;
 
 export type RunStatus = "queued" | "running" | "succeeded" | "failed";
 
-export type ConnectorKey = string;
-export type DatasetSlug = string;
 export type RunId = string;
+export type ConnectorId = string;
+export type DatasetId = string;
+export type DatasetVersionId = string;
 
 export type Run = {
   id: RunId;
   status: RunStatus;
   createdAt: string; // ISO string
-  connectorKey?: ConnectorKey;
-  datasetSlug?: DatasetSlug;
+  createdBy: {
+    uid: string;
+    email: string;
+  };
+  connectorId: ConnectorId;
+  datasetId: DatasetId;
+  startedAt?: string; // ISO
+  finishedAt?: string; // ISO
+  error?: {
+    message: string;
+    code?: string;
+  };
+  outputs?: {
+    datasetVersionId?: DatasetVersionId;
+    bigQueryTableId?: string; // table id only (dataset is env configured)
+    gcsRawNdjsonPath?: string; // path inside ARTIFACTS_BUCKET
+  };
 };
 
 export type Dataset = {
-  slug: DatasetSlug;
+  id: DatasetId;
   displayName: string;
   description?: string;
+  createdAt: string; // ISO
+  updatedAt: string; // ISO
+  latestVersionId?: DatasetVersionId;
+  nextVersionNumber: number;
 };
 
+export type DatasetVersion = {
+  id: DatasetVersionId; // v000001
+  datasetId: DatasetId;
+  versionNumber: number;
+  createdAt: string; // ISO
+  runId: RunId;
+  connectorId: ConnectorId;
+  rowCount?: number;
+  bigQuery: {
+    projectId: string;
+    datasetId: string;
+    tableId: string;
+    location: string;
+  };
+  gcs: {
+    bucket: string;
+    rawNdjsonPath: string;
+  };
+};
+
+export type Connector = {
+  id: ConnectorId;
+  displayName: string;
+  description?: string;
+  updatedAt: string; // ISO
+};
+
+export const CONNECTOR_IDS = {
+  joshuaProjectPgic: "joshuaproject_pgic"
+} as const;
+
+export const DATASET_IDS = {
+  pgicPeopleGroups: "pgic_people_groups"
+} as const;
+
 export const CreateRunRequestSchema = z.object({
-  connectorKey: z.string().min(1).optional(),
-  datasetSlug: z.string().min(1).optional()
+  connectorId: z.string().min(1),
+  datasetId: z.string().min(1)
 });
 export type CreateRunRequest = z.infer<typeof CreateRunRequestSchema>;
 
@@ -42,7 +97,9 @@ export const CreateRunResponseSchema = z.object({
 export type CreateRunResponse = z.infer<typeof CreateRunResponseSchema>;
 
 export const QueryRequestSchema = z.object({
-  sql: z.string().min(1)
+  datasetId: z.string().min(1),
+  versionId: z.string().min(1).optional(),
+  limit: z.number().int().min(1).max(1000).optional()
 });
 export type QueryRequest = z.infer<typeof QueryRequestSchema>;
 
@@ -51,6 +108,19 @@ export const ExportRequestSchema = z.object({
   format: z.enum(["jsonl", "csv"]).default("jsonl")
 });
 export type ExportRequest = z.infer<typeof ExportRequestSchema>;
+
+export function padVersionNumber(n: number, width = 6): string {
+  const s = String(Math.max(0, Math.trunc(n)));
+  return s.length >= width ? s : "0".repeat(width - s.length) + s;
+}
+
+export function formatVersionId(versionNumber: number): DatasetVersionId {
+  return `v${padVersionNumber(versionNumber)}` as DatasetVersionId;
+}
+
+export function formatVersionedTableId(datasetId: DatasetId, versionNumber: number): string {
+  return `${datasetId}__v${padVersionNumber(versionNumber)}`;
+}
 
 export function parseCommaSeparated(value: string | undefined): string[] {
   if (!value) return [];
@@ -63,4 +133,3 @@ export function parseCommaSeparated(value: string | undefined): string[] {
 export function parseAllowedAdminEmails(value: string | undefined): Set<string> {
   return new Set(parseCommaSeparated(value).map((e) => e.toLowerCase()));
 }
-

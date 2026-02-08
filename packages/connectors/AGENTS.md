@@ -23,11 +23,11 @@ Must not live here:
 - `packages/connectors/src/registry.ts`
 
 ## Interfaces / Contracts
-- A connector is identified by a stable `key` string.
-- Execution is modeled as an async `run()` function returning a structured result.
+- A connector is identified by a stable `id` string.
+- Execution is modeled as an async `run(ctx)` function returning a structured result.
+- V1 ingestion connectors typically return `output.records` as an `AsyncIterable<Record<string, unknown>>` for the worker to stream to NDJSON.
 - Connectors must be pure with respect to secrets: they read secrets only from env vars at runtime.
 
 ## Security Notes (Secrets, Authz)
 - Do not store secrets here.
 - Connectors should assume API/Worker already authenticated+authorized the caller.
-

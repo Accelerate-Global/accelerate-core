@@ -6,7 +6,7 @@ import globals from "globals";
 /** @type {import("eslint").Linter.FlatConfig[]} */
 export default [
   {
-    ignores: ["**/node_modules/**", "**/dist/**", "**/.next/**", "**/.turbo/**"]
+    ignores: ["**/node_modules/**", "**/dist/**", "**/.next/**", "**/.turbo/**", "**/next-env.d.ts"]
   },
   {
     files: ["**/*.{js,cjs,mjs,jsx}"],

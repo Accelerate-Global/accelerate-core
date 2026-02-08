@@ -7,7 +7,7 @@ Next.js web app (App Router) intended to deploy on Firebase App Hosting for V1.
 Lives here:
 - UI routes and components
 - Firebase Web SDK client initialization (Auth placeholder)
-- API client helpers calling `apps/api` via `NEXT_PUBLIC_API_BASE_URL`
+- Server-side API proxy routes under `src/app/api/*` (forward to `apps/api`)
 
 Must not live here:
 - Secrets (API keys not intended for client, service accounts)
@@ -24,14 +24,22 @@ Must not live here:
 - `apps/web/src/app/connectors/page.tsx`
 - `apps/web/src/app/datasets/page.tsx`
 - `apps/web/src/app/runs/[runId]/page.tsx`
+- `apps/web/src/app/api/runs/route.ts` (proxy to API `/runs`)
+- `apps/web/src/app/api/runs/[runId]/route.ts` (proxy to API `/runs/:id`)
 - `apps/web/src/lib/firebase/client.ts` (Firebase client placeholder)
 - `apps/web/src/lib/auth/AuthProvider.tsx` (Auth wiring placeholder)
+- `apps/web/src/lib/auth/AuthControls.tsx` (Google sign-in/out UI)
 
 ## Interfaces / Contracts
 Routes (placeholders):
 - `/connectors`
 - `/datasets`
 - `/runs/[runId]`
+
+API proxy routes (server-side):
+- `/api/runs` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs`
+- `/api/runs/[runId]` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id`
+- Requests forward `Authorization: Bearer <Firebase ID token>` from the browser to the API.
 
 Admin allowlist (V1 internal-only):
 - Web may hide admin actions using `NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS`.
@@ -44,4 +52,3 @@ Secrets:
 
 Authz:
 - Treat UI gating as convenience only. Do not rely on it for protection.
-
