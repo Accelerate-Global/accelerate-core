@@ -19,6 +19,10 @@ Must not live here:
 - Typecheck: `pnpm --filter @accelerate-core/web run typecheck`
 - Lint: `pnpm --filter @accelerate-core/web run lint`
 
+Runtime config:
+- Firebase client config is provided via `NEXT_PUBLIC_FIREBASE_*`.
+- In Firebase App Hosting, these are sourced via `apps/web/apphosting.yaml`.
+
 ## Key Files
 - `apps/web/src/app/layout.tsx`
 - `apps/web/src/app/connectors/page.tsx`
@@ -29,6 +33,7 @@ Must not live here:
 - `apps/web/src/lib/firebase/client.ts` (Firebase client placeholder)
 - `apps/web/src/lib/auth/AuthProvider.tsx` (Auth wiring placeholder)
 - `apps/web/src/lib/auth/AuthControls.tsx` (Google sign-in/out UI)
+- `apps/web/apphosting.yaml` (App Hosting env/secrets mapping)
 
 ## Interfaces / Contracts
 Routes (placeholders):

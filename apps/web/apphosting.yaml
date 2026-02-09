@@ -1,0 +1,42 @@
+# Firebase App Hosting configuration for the `apps/web` backend.
+# This file is read by App Hosting during rollout and can be safely committed.
+#
+# Notes:
+# - `NEXT_PUBLIC_*` variables are embedded into client bundles by Next.js at build time.
+# - These values are not secrets in the traditional sense, but we reference Secret Manager
+#   here to keep configuration out of git and to match the project's ops workflow.
+#
+# Official schema: https://firebase.google.com/docs/app-hosting/configure
+
+env:
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    secret: NEXT_PUBLIC_FIREBASE_API_KEY
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    secret: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    secret: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    secret: NEXT_PUBLIC_FIREBASE_APP_ID
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Optional: UI-only allowlist gating. API/Worker remain the enforcement point.
+  - variable: NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS
+    secret: NEXT_PUBLIC_ALLOWED_ADMIN_EMAILS
+    availability:
+      - BUILD
+      - RUNTIME
+
