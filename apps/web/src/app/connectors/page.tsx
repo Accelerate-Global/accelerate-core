@@ -1,11 +1,21 @@
-import { AdminActions } from "./ui";
+import Link from "next/link";
+
+import { Page } from "../_components/Page";
 
 export default function ConnectorsPage() {
   return (
-    <div className="card">
-      <h1>Connectors</h1>
-      <p className="muted">V1 internal-only: trigger a run, then monitor status on the run page.</p>
-      <AdminActions />
-    </div>
+    <Page
+      title="APIs"
+      description="External data sources you can run. Each run writes raw artifacts to GCS and creates a versioned BigQuery table."
+    >
+      <div className="gridCards">
+        <Link className="card cardLink" href="/connectors/joshuaproject">
+          <h2 style={{ margin: 0 }}>Joshua Project</h2>
+          <p className="muted" style={{ margin: "10px 0 0" }}>
+            PGIC people groups (dataset: <code>pgic_people_groups</code>)
+          </p>
+        </Link>
+      </div>
+    </Page>
   );
 }

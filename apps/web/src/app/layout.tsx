@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import "./globals.css";
 
 import { AuthProvider } from "../lib/auth/AuthProvider";
-import { AuthControls } from "../lib/auth/AuthControls";
+import { AppFrame } from "./_components/AppFrame";
 
 export const metadata: Metadata = {
-  title: "Accelerate Core",
+  title: "Accelerate Global",
   description: "V1 scaffold"
 };
 
@@ -15,17 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <AuthProvider>
-          <div className="container">
-            <div className="nav">
-              <Link href="/">Home</Link>
-              <Link href="/connectors">Connectors</Link>
-              <Link href="/datasets">Datasets</Link>
-              <div style={{ marginLeft: "auto" }}>
-                <AuthControls />
-              </div>
-            </div>
-            {children}
-          </div>
+          <AppFrame>{children}</AppFrame>
         </AuthProvider>
       </body>
     </html>
