@@ -9,6 +9,13 @@
 # Official schema: https://firebase.google.com/docs/app-hosting/configure
 
 env:
+  # Server-side API base URL for Next route handlers (preferred over NEXT_PUBLIC_API_BASE_URL).
+  - variable: API_BASE_URL
+    secret: API_BASE_URL
+    availability:
+      - BUILD
+      - RUNTIME
+
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     secret: NEXT_PUBLIC_FIREBASE_API_KEY
     availability:
@@ -39,4 +46,3 @@ env:
     availability:
       - BUILD
       - RUNTIME
-

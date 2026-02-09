@@ -19,6 +19,10 @@ Must not live here:
 - Typecheck: `pnpm --filter @accelerate-core/api run typecheck`
 - Lint: `pnpm --filter @accelerate-core/api run lint`
 
+Deploy (Cloud Run):
+- This repo ships a single Cloud Run image (root `Dockerfile`) and selects the service via `SERVICE_MODE`.
+- For the API service set `SERVICE_MODE=api`.
+
 ## Key Files
 - `apps/api/src/index.ts` (entrypoint)
 - `apps/api/src/server.ts` (Fastify setup + routes)

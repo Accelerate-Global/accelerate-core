@@ -19,6 +19,11 @@ Must not live here:
 - Typecheck: `pnpm --filter @accelerate-core/worker run typecheck`
 - Lint: `pnpm --filter @accelerate-core/worker run lint`
 
+Deploy (Cloud Run):
+- This repo ships a single Cloud Run image (root `Dockerfile`) and selects the service via `SERVICE_MODE`.
+- For the worker service set `SERVICE_MODE=worker`.
+- V1 sequential execution: deploy with `concurrency=1` and `max-instances=1`.
+
 ## Key Files
 - `apps/worker/src/index.ts` (entrypoint)
 - `apps/worker/src/server.ts` (Fastify setup + job route)
