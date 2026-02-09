@@ -342,6 +342,12 @@ a {
   gap: 12px;
 }
 
+.logGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 @media (max-width: 860px) {
   .appBody.hasSubnav {
     grid-template-columns: auto 1fr;
@@ -352,6 +358,10 @@ a {
   }
 
   .gridCards {
+    grid-template-columns: 1fr;
+  }
+
+  .logGrid {
     grid-template-columns: 1fr;
   }
 

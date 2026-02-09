@@ -10,10 +10,12 @@ import {
 } from "@accelerate-core/shared";
 import { previewRowsFromTable } from "@accelerate-core/bq";
 import {
+  appendRunLog,
   createRun,
   getDatasetById,
   getDatasetVersionById,
   getRunById,
+  listRunLogs,
   listRuns
 } from "@accelerate-core/firestore";
 
@@ -66,10 +68,32 @@ export async function buildServer(): Promise<FastifyInstance> {
       createdBy: auth
     });
 
-    // Kickoff is best-effort. If it fails, the run remains queued.
-    void kickoffWorkerRun({ runId: run.id, actorEmail: auth.email }).catch((err) => {
-      req.log.error({ err, runId: run.id }, "worker kickoff failed");
+    await appendRunLog({
+      runId: run.id,
+      source: "api",
+      level: "info",
+      message: `Run created (connector=${body.connectorId} dataset=${body.datasetId})`
     });
+
+    // Kickoff is best-effort. If it fails, the run remains queued.
+    void kickoffWorkerRun({ runId: run.id, actorEmail: auth.email })
+      .then(() =>
+        appendRunLog({
+          runId: run.id,
+          source: "api",
+          level: "info",
+          message: "Worker kickoff requested"
+        }).catch(() => {})
+      )
+      .catch(async (err) => {
+        req.log.error({ err, runId: run.id }, "worker kickoff failed");
+        await appendRunLog({
+          runId: run.id,
+          source: "api",
+          level: "error",
+          message: `Worker kickoff failed: ${err instanceof Error ? err.message : String(err)}`
+        }).catch(() => {});
+      });
 
     return CreateRunResponseSchema.parse({ id: run.id });
   });
@@ -85,6 +109,23 @@ export async function buildServer(): Promise<FastifyInstance> {
     const run = await getRunById(params.id);
     if (!run) throw new HttpError(404, "Not found");
     return run;
+  });
+
+  app.get("/runs/:id/logs", async (req) => {
+    const params = z.object({ id: z.string().min(1) }).parse(req.params);
+    const query = z
+      .object({
+        afterTsMs: z.coerce.number().int().nonnegative().optional(),
+        limit: z.coerce.number().int().min(1).max(500).optional()
+      })
+      .parse(req.query);
+
+    const logs = await listRunLogs({
+      runId: params.id,
+      afterTsMs: query.afterTsMs,
+      limit: query.limit
+    });
+    return { logs };
   });
 
   app.post("/query", async (req) => {

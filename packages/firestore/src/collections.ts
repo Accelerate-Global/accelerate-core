@@ -7,5 +7,6 @@ export const COLLECTIONS = {
 } as const;
 
 export const SUBCOLLECTIONS = {
-  versions: "versions"
+  versions: "versions",
+  logs: "logs"
 } as const;

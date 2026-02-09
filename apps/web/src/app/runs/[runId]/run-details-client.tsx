@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { Run } from "@accelerate-core/shared";
+import type { Run, RunLogEntry } from "@accelerate-core/shared";
 import { useAuth } from "../../../lib/auth/AuthProvider";
 
 type State =
@@ -58,9 +58,45 @@ async function fetchPreviewRows(input: { datasetId: string; versionId?: string; 
   return rows as Array<Record<string, unknown>>;
 }
 
+async function fetchRunLogs(input: { runId: string; afterTsMs?: number; limit?: number }, idToken: string) {
+  const url = new URL(`/api/runs/${encodeURIComponent(input.runId)}/logs`, window.location.origin);
+  if (typeof input.afterTsMs === "number") url.searchParams.set("afterTsMs", String(input.afterTsMs));
+  if (typeof input.limit === "number") url.searchParams.set("limit", String(input.limit));
+
+  const res = await fetch(url.toString(), {
+    method: "GET",
+    headers: {
+      authorization: `Bearer ${idToken}`
+    }
+  });
+
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message = typeof json?.error === "string" ? json.error : `Request failed: ${res.status}`;
+    throw new Error(message);
+  }
+
+  const logs = json?.logs;
+  if (!Array.isArray(logs)) throw new Error("Invalid response");
+  return logs as RunLogEntry[];
+}
+
+function formatLogLine(e: RunLogEntry): string {
+  const t = new Date(e.ts);
+  const hh = Number.isNaN(t.getTime()) ? e.ts : t.toLocaleTimeString();
+  const lvl = e.level ? e.level.toUpperCase() : "INFO";
+  return `[${hh}] ${lvl} ${e.message}`;
+}
+
 export function RunDetailsClient({ runId }: { runId: string }) {
   const { user, ready } = useAuth();
   const [state, setState] = useState<State>({ status: "idle" });
+  const [logs, setLogs] = useState<RunLogEntry[]>([]);
+  const [logsError, setLogsError] = useState<string | null>(null);
+  const [followLogs, setFollowLogs] = useState(true);
+  const cursorRef = useRef<number>(0);
+  const apiLogRef = useRef<HTMLPreElement | null>(null);
+  const workerLogRef = useRef<HTMLPreElement | null>(null);
 
   const canLoad = useMemo(() => ready && !!user, [ready, user]);
 
@@ -82,8 +118,31 @@ export function RunDetailsClient({ runId }: { runId: string }) {
       }
     };
 
+    const loadLogsOnce = async () => {
+      try {
+        const token = await user!.getIdToken();
+        const afterTsMs = cursorRef.current > 0 ? cursorRef.current : undefined;
+        const batch = await fetchRunLogs({ runId, afterTsMs, limit: afterTsMs ? 200 : 250 }, token);
+        if (cancelled) return;
+        if (batch.length > 0) {
+          cursorRef.current = Math.max(cursorRef.current, ...batch.map((e) => (typeof e.tsMs === "number" ? e.tsMs : 0)));
+        }
+        setLogs((prev) => {
+          const next = afterTsMs ? [...prev, ...batch] : batch;
+          return next.length > 1000 ? next.slice(-1000) : next;
+        });
+        setLogsError(null);
+      } catch (err) {
+        if (!cancelled) setLogsError(err instanceof Error ? err.message : "Failed to load logs");
+      }
+    };
+
     setState({ status: "loading" });
+    setLogs([]);
+    setLogsError(null);
+    cursorRef.current = 0;
     void loadOnce();
+    void loadLogsOnce();
 
     const interval = setInterval(() => {
       // Poll while queued/running so the UI updates as the worker progresses.
@@ -91,6 +150,7 @@ export function RunDetailsClient({ runId }: { runId: string }) {
         if (prev.status !== "ready") return prev;
         if (prev.run.status === "queued" || prev.run.status === "running") {
           void loadOnce();
+          void loadLogsOnce();
         }
         return prev;
       });
@@ -101,6 +161,15 @@ export function RunDetailsClient({ runId }: { runId: string }) {
       clearInterval(interval);
     };
   }, [canLoad, runId, user]);
+
+  useEffect(() => {
+    if (!followLogs) return;
+    // Scroll log panes to bottom when new logs arrive.
+    const apiEl = apiLogRef.current;
+    if (apiEl) apiEl.scrollTop = apiEl.scrollHeight;
+    const workerEl = workerLogRef.current;
+    if (workerEl) workerEl.scrollTop = workerEl.scrollHeight;
+  }, [followLogs, logs.length]);
 
   if (!ready) return <p className="muted">Auth loading...</p>;
   if (!user) return <p className="muted">Sign in to view run details.</p>;
@@ -127,10 +196,10 @@ export function RunDetailsClient({ runId }: { runId: string }) {
     }
   };
 
-  const workerLogsUrl =
-    "https://console.cloud.google.com/run/detail/us-east4/accelerate-core-worker/logs?project=accelerate-global-473318";
-  const apiLogsUrl =
-    "https://console.cloud.google.com/run/detail/us-east4/accelerate-core-api/logs?project=accelerate-global-473318";
+  const apiLogs = logs.filter((e) => e.source === "api");
+  const workerLogs = logs.filter((e) => e.source === "worker");
+  const apiLogsText = apiLogs.map(formatLogLine).join("\n");
+  const workerLogsText = workerLogs.map(formatLogLine).join("\n");
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -182,15 +251,46 @@ export function RunDetailsClient({ runId }: { runId: string }) {
         <button className="btn" type="button" onClick={onPreview} disabled={run.status !== "succeeded"}>
           Preview rows (limit 100)
         </button>
-        <a className="muted" href={apiLogsUrl} target="_blank" rel="noreferrer">
-          API logs
-        </a>
-        <a className="muted" href={workerLogsUrl} target="_blank" rel="noreferrer">
-          Worker logs
-        </a>
-        <span className="muted">
-          Tip: in logs, search for <code>{run.id}</code>
-        </span>
+        <button className="btn" type="button" onClick={() => setFollowLogs((v) => !v)}>
+          {followLogs ? "Following logs" : "Follow logs"}
+        </button>
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0 }}>Logs</h3>
+          <span className="muted">
+            Updates while <code>queued</code>/<code>running</code>. (Run id: <code>{run.id}</code>)
+          </span>
+        </div>
+
+        {logsError ? (
+          <details className="errorDetails" style={{ marginTop: 10 }}>
+            <summary className="muted">
+              Log load error: <code>{truncate(oneLine(logsError), 200)}</code>
+            </summary>
+            <pre className="logBlock">{logsError}</pre>
+          </details>
+        ) : null}
+
+        <div className="logGrid" style={{ marginTop: 10 }}>
+          <div className="card">
+            <div className="muted" style={{ marginBottom: 8 }}>
+              API logs
+            </div>
+            <pre ref={apiLogRef} className="logBlock">
+              {apiLogsText || "(no API log entries yet)"}
+            </pre>
+          </div>
+          <div className="card">
+            <div className="muted" style={{ marginBottom: 8 }}>
+              Worker logs
+            </div>
+            <pre ref={workerLogRef} className="logBlock">
+              {workerLogsText || "(no worker log entries yet)"}
+            </pre>
+          </div>
+        </div>
       </div>
 
       {state.rowsError ? (

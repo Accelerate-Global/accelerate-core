@@ -21,6 +21,7 @@ Must not live here:
 - `packages/firestore/src/admin.ts` (Firebase Admin initialization via ADC)
 - `packages/firestore/src/collections.ts` (collection/subcollection names)
 - `packages/firestore/src/runs.ts`
+- `packages/firestore/src/runLogs.ts`
 - `packages/firestore/src/datasets.ts`
 - `packages/firestore/src/datasetVersions.ts`
 - `packages/firestore/src/connectors.ts`
@@ -30,6 +31,7 @@ Must not live here:
 - Collections (V1):
   - `connectors/{connectorId}`
   - `runs/{runId}`
+  - `runs/{runId}/logs/{logId}` (append-only run log entries)
   - `datasets/{datasetId}`
   - `dataset_versions/{datasetId}/versions/{versionId}` (versionId is `v000001`, `v000002`, ...)
   - `runLeases/{runId}` (lease lock; worker should use this)

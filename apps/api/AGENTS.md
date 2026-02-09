@@ -39,6 +39,7 @@ HTTP endpoints (V1):
 - `POST /runs` (CreateRunRequest: `{ connectorId, datasetId }`) -> `{ id }`
 - `GET /runs` -> `{ runs }` (recent runs for admin UI)
 - `GET /runs/:id` -> `Run`
+- `GET /runs/:id/logs?afterTsMs&limit` -> `{ logs }` (run log stream; `RunLogEntry[]`)
 - `POST /query` (QueryRequest: `{ datasetId, versionId?, limit? }`) -> `{ rows }` (preview `LIMIT` 100 default)
 - `POST /exports` -> `501` (stub)
 

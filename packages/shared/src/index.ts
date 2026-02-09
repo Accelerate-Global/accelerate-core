@@ -40,6 +40,19 @@ export type Run = {
   };
 };
 
+export type RunLogSource = "api" | "worker";
+export type RunLogLevel = "info" | "warn" | "error";
+
+export type RunLogEntry = {
+  id: string;
+  runId: RunId;
+  ts: string; // ISO
+  tsMs: number;
+  source: RunLogSource;
+  level: RunLogLevel;
+  message: string;
+};
+
 export type Dataset = {
   id: DatasetId;
   displayName: string;

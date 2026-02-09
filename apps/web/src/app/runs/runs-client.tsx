@@ -89,9 +89,6 @@ export function RunsClient() {
         <button className="btn" type="button" onClick={load}>
           Refresh
         </button>
-        <span className="muted">
-          Signed in as <code>{user.email ?? user.uid}</code>
-        </span>
       </div>
 
       {runs.length === 0 ? (

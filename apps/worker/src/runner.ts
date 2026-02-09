@@ -4,6 +4,7 @@ import { createConnectorRegistry } from "@accelerate-core/connectors";
 import { connector as joshuaProjectPgicConnector } from "@accelerate-core/connector-joshuaproject";
 import {
   acquireRunLease,
+  appendRunLog,
   createDatasetVersion,
   ensureDataset,
   getRunById,
@@ -70,8 +71,14 @@ async function writeLine(stream: WritableLike, line: string): Promise<void> {
   });
 }
 
+async function logRun(runId: string, message: string, level: "info" | "warn" | "error" = "info") {
+  const line = `[worker] run=${runId} ${message}`;
+  console.log(line);
+  await appendRunLog({ runId, source: "worker", level, message }).catch(() => {});
+}
+
 export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; message: string }> {
-  console.log(`[worker] run=${runId} starting`);
+  await logRun(runId, "starting");
   const ownerId =
     process.env.WORKER_INSTANCE_ID ??
     process.env.K_REVISION ??
@@ -84,7 +91,7 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
   });
 
   if (!lease.acquired) {
-    console.log(`[worker] run=${runId} lease not acquired (already processing elsewhere)`);
+    await logRun(runId, "lease not acquired (already processing elsewhere)", "warn");
     return { ok: false, message: "Run is already leased by another worker" };
   }
 
@@ -100,7 +107,7 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
     if (!connectorId) return { ok: false, message: "Run missing connectorId" };
     if (!datasetId) return { ok: false, message: "Run missing datasetId" };
 
-    console.log(`[worker] run=${runId} connector=${connectorId} dataset=${datasetId}`);
+    await logRun(runId, `connector=${connectorId} dataset=${datasetId}`);
 
     const startedAt = new Date().toISOString();
     await updateRun(runId, { status: "running", startedAt });
@@ -129,7 +136,7 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
     const connector = registry.get(connectorId);
     if (!connector) return { ok: false, message: `Unknown connector: ${connectorId}` };
 
-    console.log(`[worker] run=${runId} executing connector`);
+    await logRun(runId, "executing connector");
     const result = await connector.run({ runId, datasetId });
     if (!result.ok) throw new Error(result.message);
 
@@ -142,8 +149,8 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
     const rawGcsUri = `gs://${bucketName}/${rawNdjsonPath}`;
     const bqGcsUri = `gs://${bucketName}/${bqNdjsonPath}`;
 
-    console.log(`[worker] run=${runId} writing raw NDJSON to ${rawGcsUri}`);
-    console.log(`[worker] run=${runId} writing BigQuery-safe NDJSON to ${bqGcsUri}`);
+    await logRun(runId, `writing raw NDJSON to ${rawGcsUri}`);
+    await logRun(runId, `writing BigQuery-safe NDJSON to ${bqGcsUri}`);
     const storage = new Storage({ projectId: process.env.GOOGLE_CLOUD_PROJECT ?? PROJECT_IDS.gcpProjectId });
     const rawFile = storage.bucket(bucketName).file(rawNdjsonPath);
     const bqFile = storage.bucket(bucketName).file(bqNdjsonPath);
@@ -177,29 +184,36 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
         writeLine(bqStream, `${JSON.stringify(sanitized)}\n`)
       ]);
       rowCount += 1;
+      if (rowCount % 2000 === 0) {
+        void appendRunLog({
+          runId,
+          source: "worker",
+          level: "info",
+          message: `progress: wrote ${rowCount} rows`
+        }).catch(() => {});
+      }
     }
 
     rawStream.end();
     bqStream.end();
     await Promise.all([finishedWriteRaw, finishedWriteBq]);
 
-    console.log(`[worker] run=${runId} wrote ${rowCount} rows`);
+    await logRun(runId, `wrote ${rowCount} rows`);
     await updateRun(runId, { outputs: { gcsRawNdjsonPath: rawNdjsonPath } });
 
     // Reserve the next dataset version number and load into BigQuery table-per-version.
     const reservation = await reserveNextDatasetVersion({ datasetId });
     const tableId = formatVersionedTableId(datasetId, reservation.versionNumber);
 
-    console.log(
-      `[worker] run=${runId} reserved datasetVersion=${reservation.versionId} table=${getBigQueryDataset()}.${tableId}`
-    );
-    await loadNdjsonFromGcsToTable({
+    await logRun(runId, `reserved datasetVersion=${reservation.versionId} table=${getBigQueryDataset()}.${tableId}`);
+    await logRun(runId, "loading into BigQuery (autodetect schema)");
+    const loadResult = await loadNdjsonFromGcsToTable({
       datasetId: getBigQueryDataset(),
       tableId,
       gcsUri: bqGcsUri
     });
 
-    console.log(`[worker] run=${runId} loaded into BigQuery`);
+    await logRun(runId, `loaded into BigQuery${loadResult.jobId ? ` (jobId=${loadResult.jobId})` : ""}`);
     await createDatasetVersion({
       datasetId,
       versionId: reservation.versionId,
@@ -230,7 +244,7 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
       }
     });
 
-    console.log(`[worker] run=${runId} succeeded`);
+    await logRun(runId, "succeeded");
     return { ok: true, message: "Succeeded" };
   } catch (err) {
     const finishedAt = new Date().toISOString();
@@ -239,10 +253,10 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
       finishedAt,
       error: { message: err instanceof Error ? err.message : "Unknown error" }
     });
-    console.log(`[worker] run=${runId} failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    await logRun(runId, `failed: ${err instanceof Error ? err.message : "Unknown error"}`, "error");
     return { ok: false, message: err instanceof Error ? err.message : "Unknown error" };
   } finally {
     await lease.release();
-    console.log(`[worker] run=${runId} lease released`);
+    await logRun(runId, "lease released");
   }
 }

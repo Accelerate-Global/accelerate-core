@@ -51,6 +51,7 @@ Artifacts / outputs (V1):
 - BigQuery uses "table per version" naming: `{datasetId}__v000001`, `{datasetId}__v000002`, ...
 - Control plane updates:
   - `runs/{runId}` status + timestamps + `outputs`
+  - `runs/{runId}/logs/{logId}` append-only log stream (for in-UI progress)
   - `dataset_versions/{datasetId}/versions/{versionId}` and dataset `latestVersionId`
 
 ## Security Notes (Secrets, Authz)

@@ -65,10 +65,14 @@ export function AdminActions(props: { onRunCreated?: (runId: string) => void } =
 
   return (
     <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
-      <button className="btn" type="button" disabled={busy} onClick={() => onTrigger({ onRunCreated: props.onRunCreated })}>
+      <button
+        className="btn"
+        type="button"
+        disabled={busy}
+        onClick={() => onTrigger({ onRunCreated: props.onRunCreated })}
+      >
         {busy ? "Starting..." : "Run PGIC People Groups"}
       </button>
-      <span className="muted">Signed-in as {email}</span>
       {error ? <span className="muted">Error: {error}</span> : null}
     </div>
   );

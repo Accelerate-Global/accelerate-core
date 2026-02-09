@@ -5,3 +5,4 @@ export * from "./datasets";
 export * from "./connectors";
 export * from "./datasetVersions";
 export * from "./leases";
+export * from "./runLogs";

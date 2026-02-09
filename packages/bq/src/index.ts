@@ -94,19 +94,33 @@ export async function loadNdjsonFromGcsToTable(input: {
   assertSafeIdentifier(tableId, "table");
 
   const bq = getBigQueryClient();
-  const dataset = bq.dataset(datasetId, { location: getBigQueryLocation() });
-  const table = dataset.table(tableId);
+  const projectId = getGcpProjectId();
 
-  const [job] = await table.load(input.gcsUri, {
-    sourceFormat: "NEWLINE_DELIMITED_JSON",
-    autodetect: true,
-    createDisposition: "CREATE_IF_NEEDED",
-    writeDisposition: "WRITE_TRUNCATE"
+  // NOTE: `Table#load(string)` treats a string as a local file path and will try
+  // to `fs.open()` it. We create an explicit load job so `gs://...` URIs work.
+  const [job] = await bq.createJob({
+    configuration: {
+      load: {
+        sourceUris: [input.gcsUri],
+        destinationTable: {
+          projectId,
+          datasetId,
+          tableId
+        },
+        sourceFormat: "NEWLINE_DELIMITED_JSON",
+        autodetect: true,
+        createDisposition: "CREATE_IF_NEEDED",
+        writeDisposition: "WRITE_TRUNCATE"
+      }
+    },
+    location: getBigQueryLocation()
   });
 
-  // `table.load` resolves when the job completes and returns job metadata.
-  const jobId = extractJobId(job);
+  // Wait for completion (throws on job error).
+  const promiseResult = (await job.promise()) as unknown;
+  const metadata = Array.isArray(promiseResult) ? (promiseResult[0] as unknown) : undefined;
 
+  const jobId = extractJobId(metadata ?? job);
   return { jobId };
 }
 
