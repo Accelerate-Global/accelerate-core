@@ -5,35 +5,34 @@ export const JOSHUA_PROJECT_PGIC_CONNECTOR_ID = "joshuaproject_pgic";
 
 export type JoshuaProjectPeopleGroupsOptions = {
   limit?: number;
-  maxPages?: number;
-  baseUrl?: string;
+  url?: string; // override full endpoint URL
+  includeProfileText?: "Y" | "N";
+  includeResources?: "Y" | "N";
 };
 
-type PeopleGroupsResponse = {
-  data?: unknown[];
-  meta?: {
-    pagination?: {
-      current_page?: number;
-      total_pages?: number;
-      per_page?: number;
-      total?: number;
-    };
-  };
-};
+const DEFAULT_PEOPLE_GROUPS_URL = "https://api.joshuaproject.net/v1/people_groups.json";
 
-async function fetchPeopleGroupsPage(input: {
+function safeSnippet(text: string, max = 280): string {
+  const compact = text.replace(/\s+/g, " ").trim();
+  if (compact.length <= max) return compact;
+  return `${compact.slice(0, Math.max(0, max - 1))}…`;
+}
+
+async function fetchPeopleGroupsOnce(input: {
   apiKey: string;
-  baseUrl: string;
-  page: number;
+  url: string;
   limit: number;
-}): Promise<{ items: Record<string, unknown>[]; totalPages: number | null }> {
-  const baseUrl = input.baseUrl.endsWith("/") ? input.baseUrl.slice(0, -1) : input.baseUrl;
-  const url = new URL(`${baseUrl}/people_groups`);
+  includeProfileText: "Y" | "N";
+  includeResources: "Y" | "N";
+}): Promise<Record<string, unknown>[]> {
+  const url = new URL(input.url);
   url.searchParams.set("api_key", input.apiKey);
-  url.searchParams.set("page", String(input.page));
+  url.searchParams.set("include_profile_text", input.includeProfileText);
+  url.searchParams.set("include_resources", input.includeResources);
+  url.searchParams.set("page", "1");
   url.searchParams.set("limit", String(input.limit));
 
-  const res = await fetch(url, {
+  const res = await fetch(url.toString(), {
     method: "GET",
     headers: {
       accept: "application/json"
@@ -42,49 +41,39 @@ async function fetchPeopleGroupsPage(input: {
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`Joshua Project API error: ${res.status} ${res.statusText} ${text}`.trim());
+    const snippet = text ? ` ${safeSnippet(text)}` : "";
+    throw new Error(`Joshua Project API error: ${res.status} ${res.statusText}.${snippet}`.trim());
   }
 
-  const json = (await res.json()) as PeopleGroupsResponse;
-  const items = Array.isArray(json.data) ? json.data : [];
-  const totalPages =
-    typeof json.meta?.pagination?.total_pages === "number" ? json.meta.pagination.total_pages : null;
+  const payload = (await res.json()) as unknown;
+  const data = Array.isArray(payload)
+    ? payload
+    : payload && typeof payload === "object" && Array.isArray((payload as { data?: unknown[] }).data)
+      ? (payload as { data?: unknown[] }).data!
+      : [payload];
 
-  return {
-    items: items.filter((x): x is Record<string, unknown> => !!x && typeof x === "object") as Record<
-      string,
-      unknown
-    >[],
-    totalPages
-  };
+  return data.filter((x): x is Record<string, unknown> => !!x && typeof x === "object" && !Array.isArray(x));
 }
 
 export async function* streamPgicPeopleGroups(input: {
   apiKey: string;
   options?: JoshuaProjectPeopleGroupsOptions;
 }): AsyncGenerator<Record<string, unknown>> {
-  const limit = input.options?.limit ?? 1000;
-  const maxPages = input.options?.maxPages ?? 200;
-  const baseUrl = input.options?.baseUrl ?? process.env.JOSHUA_PROJECT_BASE_URL ?? "https://joshuaproject.net/api/v2";
+  const url = input.options?.url ?? DEFAULT_PEOPLE_GROUPS_URL;
+  // Script equivalent: single call with a very large limit to fetch everything at once.
+  const limit = input.options?.limit ?? (process.env.JOSHUA_PROJECT_LIMIT ? Number(process.env.JOSHUA_PROJECT_LIMIT) : 100000);
+  const includeProfileText = input.options?.includeProfileText ?? "Y";
+  const includeResources = input.options?.includeResources ?? "Y";
 
-  let page = 1;
-  let totalPages: number | null = null;
+  const items = await fetchPeopleGroupsOnce({
+    apiKey: input.apiKey,
+    url,
+    limit,
+    includeProfileText,
+    includeResources
+  });
 
-  while (page <= maxPages && (totalPages == null || page <= totalPages)) {
-    const { items, totalPages: nextTotalPages } = await fetchPeopleGroupsPage({
-      apiKey: input.apiKey,
-      baseUrl,
-      page,
-      limit
-    });
-
-    totalPages = totalPages ?? nextTotalPages;
-
-    if (items.length === 0) break;
-    for (const item of items) yield item;
-
-    page += 1;
-  }
+  for (const item of items) yield item;
 }
 
 export async function fetchJoshuaProjectData(ctx: ConnectorRunContext): Promise<ConnectorRunResult> {
@@ -106,8 +95,7 @@ export async function fetchJoshuaProjectData(ctx: ConnectorRunContext): Promise<
       records: streamPgicPeopleGroups({
         apiKey,
         options: {
-          limit: process.env.JOSHUA_PROJECT_LIMIT ? Number(process.env.JOSHUA_PROJECT_LIMIT) : undefined,
-          maxPages: process.env.JOSHUA_PROJECT_MAX_PAGES ? Number(process.env.JOSHUA_PROJECT_MAX_PAGES) : undefined
+          limit: process.env.JOSHUA_PROJECT_LIMIT ? Number(process.env.JOSHUA_PROJECT_LIMIT) : undefined
         }
       })
     }

@@ -11,6 +11,15 @@ type State =
   | { status: "error"; message: string }
   | { status: "ready"; run: Run; rows?: Array<Record<string, unknown>>; rowsError?: string };
 
+function oneLine(s: string): string {
+  return s.replace(/\s+/g, " ").trim();
+}
+
+function truncate(s: string, max = 220): string {
+  if (s.length <= max) return s;
+  return `${s.slice(0, Math.max(0, max - 1))}…`;
+}
+
 async function fetchRun(runId: string, idToken: string): Promise<Run> {
   const res = await fetch(`/api/runs/${encodeURIComponent(runId)}`, {
     method: "GET",
@@ -161,9 +170,12 @@ export function RunDetailsClient({ runId }: { runId: string }) {
         </div>
       ) : null}
       {run.error?.message ? (
-        <div style={{ marginTop: 10 }} className="muted">
-          Error: <code>{run.error.message}</code>
-        </div>
+        <details className="errorDetails" style={{ marginTop: 10 }}>
+          <summary className="muted">
+            Error: <code>{truncate(oneLine(run.error.message), 200)}</code>
+          </summary>
+          <pre className="logBlock">{run.error.message}</pre>
+        </details>
       ) : null}
 
       <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -182,9 +194,12 @@ export function RunDetailsClient({ runId }: { runId: string }) {
       </div>
 
       {state.rowsError ? (
-        <div style={{ marginTop: 10 }} className="muted">
-          Preview error: <code>{state.rowsError}</code>
-        </div>
+        <details className="errorDetails" style={{ marginTop: 10 }}>
+          <summary className="muted">
+            Preview error: <code>{truncate(oneLine(state.rowsError), 200)}</code>
+          </summary>
+          <pre className="logBlock">{state.rowsError}</pre>
+        </details>
       ) : null}
 
       {state.rows && state.rows.length > 0 ? (

@@ -93,19 +93,47 @@ a {
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
-.brandText {
+.brandLogoImg {
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.brandWordmark {
+  height: 22px;
+  width: auto;
+  display: block;
+  color: rgba(233, 238, 248, 0.95);
+}
+
+.sidebarFooter {
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.navPin {
+  width: 100%;
   display: flex;
-  flex-direction: column;
-  line-height: 1.1;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
 }
 
-.brandName {
-  font-weight: 700;
-  letter-spacing: 0.1px;
+.navPin:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.06);
 }
 
-.brandTag {
-  font-size: 12px;
+.navPinActive {
+  background: rgba(255, 184, 0, 0.08);
+  border-color: rgba(255, 184, 0, 0.22);
 }
 
 .topbarSpacer {
@@ -133,6 +161,10 @@ a {
   backdrop-filter: blur(12px);
   transition: width 160ms ease;
   overflow: hidden;
+}
+
+.sidebarPinned {
+  width: var(--sidebar-expanded);
 }
 
 .sidebar:hover,
@@ -182,6 +214,12 @@ a {
   transition: opacity 140ms ease, transform 140ms ease;
   white-space: nowrap;
   pointer-events: none;
+}
+
+.sidebarPinned .navLabel {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
 .sidebar:hover .navLabel,
@@ -390,4 +428,22 @@ a {
 
 .table tbody tr:hover {
   background: rgba(86, 215, 255, 0.06);
+}
+
+.errorDetails summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.logBlock {
+  margin: 10px 0 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.22);
+  color: rgba(233, 238, 248, 0.92);
+  overflow: auto;
+  max-height: 260px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }

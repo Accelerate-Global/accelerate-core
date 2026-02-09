@@ -25,8 +25,13 @@ Runtime config:
 
 ## Key Files
 - `apps/web/src/app/layout.tsx`
+- `apps/web/src/app/_components/AppFrame.tsx` (app chrome: topbar + sidebar + section subnav)
+- `apps/web/src/app/_components/Page.tsx` (page title + description template)
 - `apps/web/src/app/connectors/page.tsx`
+- `apps/web/src/app/connectors/joshuaproject/page.tsx` (run JP connector; embeds run details)
 - `apps/web/src/app/datasets/page.tsx`
+- `apps/web/src/app/datasets/pgic_people_groups/page.tsx` (dataset preview)
+- `apps/web/src/app/runs/page.tsx` (runs list)
 - `apps/web/src/app/runs/[runId]/page.tsx`
 - `apps/web/src/app/api/query/route.ts` (proxy to API `/query`)
 - `apps/web/src/app/api/runs/route.ts` (proxy to API `/runs`)
@@ -39,7 +44,10 @@ Runtime config:
 ## Interfaces / Contracts
 Routes (placeholders):
 - `/connectors`
+- `/connectors/joshuaproject`
 - `/datasets`
+- `/datasets/pgic_people_groups`
+- `/runs`
 - `/runs/[runId]`
 
 API proxy routes (server-side):

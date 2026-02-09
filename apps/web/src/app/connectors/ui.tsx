@@ -8,7 +8,7 @@ import { CONNECTOR_IDS, DATASET_IDS } from "@accelerate-core/shared";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import { isAllowedAdminEmail } from "../../lib/admin";
 
-export function AdminActions() {
+export function AdminActions(props: { onRunCreated?: (runId: string) => void } = {}) {
   const router = useRouter();
   const { user } = useAuth();
   const email = user?.email ?? null;
@@ -25,7 +25,7 @@ export function AdminActions() {
     );
   }
 
-  const onTrigger = async () => {
+  const onTrigger = async (opts?: { onRunCreated?: (runId: string) => void }) => {
     if (!user) return;
     setBusy(true);
     setError(null);
@@ -51,7 +51,11 @@ export function AdminActions() {
 
       const runId = json?.id;
       if (typeof runId !== "string" || runId.length === 0) throw new Error("Invalid response");
-      router.push(`/runs/${encodeURIComponent(runId)}`);
+      if (opts?.onRunCreated) {
+        opts.onRunCreated(runId);
+      } else {
+        router.push(`/runs/${encodeURIComponent(runId)}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create run");
     } finally {
@@ -61,7 +65,7 @@ export function AdminActions() {
 
   return (
     <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
-      <button className="btn" type="button" disabled={busy} onClick={onTrigger}>
+      <button className="btn" type="button" disabled={busy} onClick={() => onTrigger({ onRunCreated: props.onRunCreated })}>
         {busy ? "Starting..." : "Run PGIC People Groups"}
       </button>
       <span className="muted">Signed-in as {email}</span>

@@ -138,32 +138,50 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
 
     const bucketName = getArtifactsBucket();
     const rawNdjsonPath = `raw/${connectorId}/${runId}/${datasetId}.ndjson`;
-    const gcsUri = `gs://${bucketName}/${rawNdjsonPath}`;
+    const bqNdjsonPath = `raw/${connectorId}/${runId}/${datasetId}.bq.ndjson`;
+    const rawGcsUri = `gs://${bucketName}/${rawNdjsonPath}`;
+    const bqGcsUri = `gs://${bucketName}/${bqNdjsonPath}`;
 
-    console.log(`[worker] run=${runId} writing raw NDJSON to ${gcsUri}`);
+    console.log(`[worker] run=${runId} writing raw NDJSON to ${rawGcsUri}`);
+    console.log(`[worker] run=${runId} writing BigQuery-safe NDJSON to ${bqGcsUri}`);
     const storage = new Storage({ projectId: process.env.GOOGLE_CLOUD_PROJECT ?? PROJECT_IDS.gcpProjectId });
-    const file = storage.bucket(bucketName).file(rawNdjsonPath);
+    const rawFile = storage.bucket(bucketName).file(rawNdjsonPath);
+    const bqFile = storage.bucket(bucketName).file(bqNdjsonPath);
 
-    const stream = file.createWriteStream({
+    const rawStream = rawFile.createWriteStream({
+      resumable: false,
+      contentType: "application/x-ndjson"
+    }) as unknown as WritableLike;
+
+    const bqStream = bqFile.createWriteStream({
       resumable: false,
       contentType: "application/x-ndjson"
     }) as unknown as WritableLike;
 
     let rowCount = 0;
 
-    const finishedWrite = new Promise<void>((resolve, reject) => {
-      stream.once("finish", () => resolve());
-      stream.once("error", (err) => reject(err));
+    const finishedWriteRaw = new Promise<void>((resolve, reject) => {
+      rawStream.once("finish", () => resolve());
+      rawStream.once("error", (err) => reject(err));
+    });
+
+    const finishedWriteBq = new Promise<void>((resolve, reject) => {
+      bqStream.once("finish", () => resolve());
+      bqStream.once("error", (err) => reject(err));
     });
 
     for await (const record of records) {
       const sanitized = sanitizeValueForBigQuery(record) as Record<string, unknown>;
-      await writeLine(stream, `${JSON.stringify(sanitized)}\n`);
+      await Promise.all([
+        writeLine(rawStream, `${JSON.stringify(record)}\n`),
+        writeLine(bqStream, `${JSON.stringify(sanitized)}\n`)
+      ]);
       rowCount += 1;
     }
 
-    stream.end();
-    await finishedWrite;
+    rawStream.end();
+    bqStream.end();
+    await Promise.all([finishedWriteRaw, finishedWriteBq]);
 
     console.log(`[worker] run=${runId} wrote ${rowCount} rows`);
     await updateRun(runId, { outputs: { gcsRawNdjsonPath: rawNdjsonPath } });
@@ -178,7 +196,7 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
     await loadNdjsonFromGcsToTable({
       datasetId: getBigQueryDataset(),
       tableId,
-      gcsUri
+      gcsUri: bqGcsUri
     });
 
     console.log(`[worker] run=${runId} loaded into BigQuery`);
