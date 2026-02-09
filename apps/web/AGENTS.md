@@ -28,6 +28,7 @@ Runtime config:
 - `apps/web/src/app/connectors/page.tsx`
 - `apps/web/src/app/datasets/page.tsx`
 - `apps/web/src/app/runs/[runId]/page.tsx`
+- `apps/web/src/app/api/query/route.ts` (proxy to API `/query`)
 - `apps/web/src/app/api/runs/route.ts` (proxy to API `/runs`)
 - `apps/web/src/app/api/runs/[runId]/route.ts` (proxy to API `/runs/:id`)
 - `apps/web/src/lib/firebase/client.ts` (Firebase client placeholder)
@@ -42,6 +43,7 @@ Routes (placeholders):
 - `/runs/[runId]`
 
 API proxy routes (server-side):
+- `/api/query` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/query` (returns `{ rows }`)
 - `/api/runs` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs`
 - `/api/runs/[runId]` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id`
 - Requests forward `Authorization: Bearer <Firebase ID token>` from the browser to the API.

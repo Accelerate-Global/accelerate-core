@@ -11,8 +11,15 @@ export function getAdminApp() {
   return getApp();
 }
 
+let _db: ReturnType<typeof getFirestore> | null = null;
 export function getDb() {
-  return getFirestore(getAdminApp());
+  if (_db) return _db;
+  const db = getFirestore(getAdminApp());
+  // Prevent subtle runtime failures when optional fields are omitted but still
+  // present as `undefined` in object literals.
+  db.settings({ ignoreUndefinedProperties: true });
+  _db = db;
+  return db;
 }
 
 export function getAdminAuth() {
