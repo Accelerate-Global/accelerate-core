@@ -40,6 +40,8 @@ HTTP endpoints (V1):
 - `GET /runs` -> `{ runs }` (recent runs for admin UI)
 - `GET /runs/:id` -> `Run`
 - `GET /runs/:id/logs?afterTsMs&limit` -> `{ logs }` (run log stream; `RunLogEntry[]`)
+- `POST /runs/:id/cancel` -> `{ ok: true }` (best-effort cancel: marks the run `failed` with `error.code=canceled`)
+- `GET /runs/:id/raw` (streams the raw NDJSON artifact as a download if available)
 - `POST /query` (QueryRequest: `{ datasetId, versionId?, limit? }`) -> `{ rows }` (preview `LIMIT` 100 default)
 - `POST /exports` -> `501` (stub)
 

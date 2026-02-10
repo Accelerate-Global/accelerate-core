@@ -47,6 +47,9 @@ importers:
       '@accelerate-core/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@google-cloud/storage':
+        specifier: ^7.17.0
+        version: 7.19.0
       fastify:
         specifier: ^5.2.1
         version: 5.7.4

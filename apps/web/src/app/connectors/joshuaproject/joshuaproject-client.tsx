@@ -203,7 +203,17 @@ export function JoshuaProjectClient() {
       {selectedRunId ? (
         <div style={{ marginTop: 14 }} className="card">
           <h3 style={{ marginTop: 0 }}>Run details</h3>
-          <RunDetailsClient runId={selectedRunId} />
+          <RunDetailsClient
+            runId={selectedRunId}
+            onRunUpdate={(nextRun) => {
+              setRunsState((prev) => {
+                if (prev.status !== "ready") return prev;
+                const exists = prev.runs.some((r) => r.id === nextRun.id);
+                const runs = exists ? prev.runs.map((r) => (r.id === nextRun.id ? nextRun : r)) : [nextRun, ...prev.runs];
+                return { ...prev, runs };
+              });
+            }}
+          />
         </div>
       ) : null}
     </div>

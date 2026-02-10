@@ -36,7 +36,9 @@ Runtime config:
 - `apps/web/src/app/api/query/route.ts` (proxy to API `/query`)
 - `apps/web/src/app/api/runs/route.ts` (proxy to API `/runs`)
 - `apps/web/src/app/api/runs/[runId]/route.ts` (proxy to API `/runs/:id`)
+- `apps/web/src/app/api/runs/[runId]/cancel/route.ts` (proxy to API `/runs/:id/cancel`)
 - `apps/web/src/app/api/runs/[runId]/logs/route.ts` (proxy to API `/runs/:id/logs`)
+- `apps/web/src/app/api/runs/[runId]/raw/route.ts` (proxy to API `/runs/:id/raw`)
 - `apps/web/src/lib/firebase/client.ts` (Firebase client placeholder)
 - `apps/web/src/lib/auth/AuthProvider.tsx` (Auth wiring placeholder)
 - `apps/web/src/lib/auth/AuthControls.tsx` (Google sign-in/out UI)
@@ -55,7 +57,9 @@ API proxy routes (server-side):
 - `/api/query` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/query` (returns `{ rows }`)
 - `/api/runs` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs`
 - `/api/runs/[runId]` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id`
+- `/api/runs/[runId]/cancel` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id/cancel`
 - `/api/runs/[runId]/logs` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id/logs` (returns `{ logs }`)
+- `/api/runs/[runId]/raw` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id/raw` (streams NDJSON download)
 - Requests forward `Authorization: Bearer <Firebase ID token>` from the browser to the API.
 
 Admin allowlist (V1 internal-only):

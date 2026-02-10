@@ -75,7 +75,12 @@ export function AppFrame({ children }: { children: ReactNode }) {
 
   const connectorsSubnav = useMemo<NavItem[]>(
     () => [
-      { href: "/connectors", label: "Overview", icon: <span className="subnavDot" aria-hidden="true" /> },
+      {
+        href: "/connectors",
+        label: "Overview",
+        icon: <span className="subnavDot" aria-hidden="true" />,
+        match: "exact"
+      },
       {
         href: "/connectors/joshuaproject",
         label: "Joshua Project",
@@ -87,7 +92,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
 
   const datasetsSubnav = useMemo<NavItem[]>(
     () => [
-      { href: "/datasets", label: "Overview", icon: <span className="subnavDot" aria-hidden="true" /> },
+      { href: "/datasets", label: "Overview", icon: <span className="subnavDot" aria-hidden="true" />, match: "exact" },
       {
         href: "/datasets/pgic_people_groups",
         label: "PGIC People Groups",

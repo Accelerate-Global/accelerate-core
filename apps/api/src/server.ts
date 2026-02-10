@@ -1,11 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import Fastify from "fastify";
 import { z } from "zod";
+import { Storage } from "@google-cloud/storage";
 
 import {
   CreateRunRequestSchema,
   CreateRunResponseSchema,
   ExportRequestSchema,
+  PROJECT_IDS,
   QueryRequestSchema
 } from "@accelerate-core/shared";
 import { previewRowsFromTable } from "@accelerate-core/bq";
@@ -16,21 +18,27 @@ import {
   getDatasetVersionById,
   getRunById,
   listRunLogs,
-  listRuns
+  listRuns,
+  updateRun
 } from "@accelerate-core/firestore";
 
 import { assertIsAllowedAdmin, getAuthContextFromRequest, HttpError } from "./auth";
 import { kickoffWorkerRun } from "./workerClient";
+
+function getArtifactsBucket(): string {
+  return process.env.ARTIFACTS_BUCKET ?? PROJECT_IDS.artifactsBucketDefault;
+}
 
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: true
   });
 
-  app.setErrorHandler((err, _req, reply) => {
+  app.setErrorHandler((err, req, reply) => {
     const httpErr = err instanceof HttpError ? err : null;
     const statusCode = httpErr?.statusCode ?? 500;
     const message = httpErr?.expose ? httpErr.message : "Internal Server Error";
+    if (statusCode >= 500) req.log.error({ err }, "unhandled error");
     void reply.status(statusCode).send({ error: message });
   });
 
@@ -126,6 +134,51 @@ export async function buildServer(): Promise<FastifyInstance> {
       limit: query.limit
     });
     return { logs };
+  });
+
+  app.post("/runs/:id/cancel", async (req) => {
+    const params = z.object({ id: z.string().min(1) }).parse(req.params);
+    const auth = (req as unknown as { auth: { uid: string; email: string } }).auth;
+
+    const run = await getRunById(params.id);
+    if (!run) throw new HttpError(404, "Not found");
+    if (run.status === "succeeded") throw new HttpError(409, "Run already succeeded");
+    if (run.status === "failed") throw new HttpError(409, "Run already failed");
+
+    const finishedAt = new Date().toISOString();
+    await updateRun(params.id, {
+      status: "failed",
+      finishedAt,
+      error: { message: `Canceled by ${auth.email}`, code: "canceled" }
+    });
+
+    await appendRunLog({
+      runId: params.id,
+      source: "api",
+      level: "warn",
+      message: `Cancel requested by ${auth.email}`
+    }).catch(() => {});
+
+    return { ok: true };
+  });
+
+  app.get("/runs/:id/raw", async (req, reply) => {
+    const params = z.object({ id: z.string().min(1) }).parse(req.params);
+    const run = await getRunById(params.id);
+    if (!run) throw new HttpError(404, "Not found");
+
+    const path = run.outputs?.gcsRawNdjsonPath;
+    if (!path) throw new HttpError(404, "Raw artifact not available");
+
+    const bucketName = getArtifactsBucket();
+    const storage = new Storage({ projectId: process.env.GOOGLE_CLOUD_PROJECT ?? PROJECT_IDS.gcpProjectId });
+    const file = storage.bucket(bucketName).file(path);
+
+    // Stream the artifact to the caller.
+    const filename = path.split("/").slice(-1)[0] ?? "artifact.ndjson";
+    void reply.header("content-type", "application/x-ndjson");
+    void reply.header("content-disposition", `attachment; filename=\"${filename}\"`);
+    return reply.send(file.createReadStream());
   });
 
   app.post("/query", async (req) => {

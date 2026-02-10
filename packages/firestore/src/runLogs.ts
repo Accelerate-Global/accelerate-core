@@ -41,18 +41,19 @@ export async function listRunLogs(input: {
   const db = getDb();
   const limit = typeof input.limit === "number" ? Math.max(1, Math.min(500, input.limit)) : 200;
 
-  let q = db
+  const col = db
     .collection(COLLECTIONS.runs)
     .doc(input.runId)
-    .collection(SUBCOLLECTIONS.logs)
-    .orderBy("tsMs", "asc")
-    .limit(limit);
+    .collection(SUBCOLLECTIONS.logs);
 
+  // NOTE: Build the query without reusing an already-limited query instance.
+  // Some SDK versions behave poorly if you chain `limit()` multiple times.
+  let q = col.orderBy("tsMs", "asc");
   if (typeof input.afterTsMs === "number") {
-    q = q.where("tsMs", ">", input.afterTsMs).orderBy("tsMs", "asc").limit(limit);
+    q = q.where("tsMs", ">", input.afterTsMs);
   }
+  q = q.limit(limit);
 
   const snap = await q.get();
   return snap.docs.map((d) => d.data() as RunLogEntry);
 }
-

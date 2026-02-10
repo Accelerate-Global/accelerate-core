@@ -100,6 +100,7 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
     if (!run) return { ok: false, message: "Run not found" };
 
     if (run.status === "succeeded") return { ok: true, message: "Run already succeeded" };
+    if (run.status === "failed") return { ok: false, message: "Run already failed" };
 
     const connectorId = run.connectorId;
     const datasetId = run.datasetId;
@@ -185,6 +186,11 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
       ]);
       rowCount += 1;
       if (rowCount % 2000 === 0) {
+        const latest = await getRunById(runId).catch(() => null);
+        if (latest?.status === "failed") {
+          await logRun(runId, "canceled (run marked failed)", "warn");
+          return { ok: false, message: "Canceled" };
+        }
         void appendRunLog({
           runId,
           source: "worker",
@@ -204,6 +210,12 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
     // Reserve the next dataset version number and load into BigQuery table-per-version.
     const reservation = await reserveNextDatasetVersion({ datasetId });
     const tableId = formatVersionedTableId(datasetId, reservation.versionNumber);
+
+    const beforeLoad = await getRunById(runId).catch(() => null);
+    if (beforeLoad?.status === "failed") {
+      await logRun(runId, "canceled before BigQuery load (run marked failed)", "warn");
+      return { ok: false, message: "Canceled" };
+    }
 
     await logRun(runId, `reserved datasetVersion=${reservation.versionId} table=${getBigQueryDataset()}.${tableId}`);
     await logRun(runId, "loading into BigQuery (autodetect schema)");
@@ -232,6 +244,12 @@ export async function runConnectorForRun(runId: string): Promise<{ ok: boolean; 
         rawNdjsonPath
       }
     });
+
+    const beforeSucceed = await getRunById(runId).catch(() => null);
+    if (beforeSucceed?.status === "failed") {
+      await logRun(runId, "canceled after BigQuery load (run marked failed)", "warn");
+      return { ok: false, message: "Canceled" };
+    }
 
     const finishedAt = new Date().toISOString();
     await updateRun(runId, {

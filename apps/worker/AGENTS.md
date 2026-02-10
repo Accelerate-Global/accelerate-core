@@ -46,6 +46,10 @@ Sequential execution contract:
 - Cloud Run deploy should set `concurrency=1` for this service.
 - A Firestore lease lock (`runLeases/{runId}`) provides defense-in-depth to prevent multi-processing.
 
+Cancel contract (best-effort):
+- API can cancel a run by marking it `failed` with `error.code=canceled`.
+- Worker checks for cancellation at safe points (every ~2000 rows, before/after BigQuery load) and stops early when detected.
+
 Artifacts / outputs (V1):
 - Raw NDJSON is written to: `gs://$ARTIFACTS_BUCKET/raw/{connectorId}/{runId}/{datasetId}.ndjson`
 - BigQuery uses "table per version" naming: `{datasetId}__v000001`, `{datasetId}__v000002`, ...

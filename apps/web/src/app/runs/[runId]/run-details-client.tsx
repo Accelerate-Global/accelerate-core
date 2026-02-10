@@ -88,11 +88,13 @@ function formatLogLine(e: RunLogEntry): string {
   return `[${hh}] ${lvl} ${e.message}`;
 }
 
-export function RunDetailsClient({ runId }: { runId: string }) {
+export function RunDetailsClient({ runId, onRunUpdate }: { runId: string; onRunUpdate?: (run: Run) => void }) {
   const { user, ready } = useAuth();
   const [state, setState] = useState<State>({ status: "idle" });
   const [logs, setLogs] = useState<RunLogEntry[]>([]);
   const [logsError, setLogsError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<null | "cancel" | "download">(null);
   const [followLogs, setFollowLogs] = useState(true);
   const cursorRef = useRef<number>(0);
   const apiLogRef = useRef<HTMLPreElement | null>(null);
@@ -109,6 +111,7 @@ export function RunDetailsClient({ runId }: { runId: string }) {
         const token = await user!.getIdToken();
         const data = await fetchRun(runId, token);
         if (cancelled) return;
+        onRunUpdate?.(data);
         setState((prev) => {
           if (prev.status === "ready") return { ...prev, run: data };
           return { status: "ready", run: data };
@@ -140,6 +143,8 @@ export function RunDetailsClient({ runId }: { runId: string }) {
     setState({ status: "loading" });
     setLogs([]);
     setLogsError(null);
+    setActionError(null);
+    setBusy(null);
     cursorRef.current = 0;
     void loadOnce();
     void loadLogsOnce();
@@ -160,7 +165,7 @@ export function RunDetailsClient({ runId }: { runId: string }) {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [canLoad, runId, user]);
+  }, [canLoad, onRunUpdate, runId, user]);
 
   useEffect(() => {
     if (!followLogs) return;
@@ -178,6 +183,67 @@ export function RunDetailsClient({ runId }: { runId: string }) {
   if (state.status === "error") return <p className="muted">Error: {state.message}</p>;
 
   const run = state.run;
+
+  const onCancel = async () => {
+    if (!user) return;
+    setBusy("cancel");
+    setActionError(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/runs/${encodeURIComponent(runId)}/cancel`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`
+        }
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const message = typeof json?.error === "string" ? json.error : `Request failed: ${res.status}`;
+        throw new Error(message);
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Cancel failed");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const onDownloadRaw = async () => {
+    if (!user) return;
+    setBusy("download");
+    setActionError(null);
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/runs/${encodeURIComponent(runId)}/raw`, {
+        method: "GET",
+        headers: {
+          authorization: `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        const message = typeof json?.error === "string" ? json.error : `Request failed: ${res.status}`;
+        throw new Error(message);
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${run.datasetId}-${run.id}.ndjson`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const onPreview = async () => {
     try {
@@ -248,13 +314,32 @@ export function RunDetailsClient({ runId }: { runId: string }) {
       ) : null}
 
       <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        <button className="btn" type="button" onClick={onPreview} disabled={run.status !== "succeeded"}>
+        {run.status === "queued" || run.status === "running" ? (
+          <button className="btn" type="button" onClick={onCancel} disabled={busy !== null}>
+            {busy === "cancel" ? "Stopping..." : "Stop run"}
+          </button>
+        ) : null}
+        <button className="btn" type="button" onClick={onPreview} disabled={run.status !== "succeeded" || busy !== null}>
           Preview rows (limit 100)
         </button>
-        <button className="btn" type="button" onClick={() => setFollowLogs((v) => !v)}>
+        {run.outputs?.gcsRawNdjsonPath ? (
+          <button className="btn" type="button" onClick={onDownloadRaw} disabled={busy !== null}>
+            {busy === "download" ? "Downloading..." : "Download raw artifact"}
+          </button>
+        ) : null}
+        <button className="btn" type="button" onClick={() => setFollowLogs((v) => !v)} disabled={busy !== null}>
           {followLogs ? "Following logs" : "Follow logs"}
         </button>
       </div>
+
+      {actionError ? (
+        <details className="errorDetails" style={{ marginTop: 10 }}>
+          <summary className="muted">
+            Action error: <code>{truncate(oneLine(actionError), 200)}</code>
+          </summary>
+          <pre className="logBlock">{actionError}</pre>
+        </details>
+      ) : null}
 
       <div style={{ marginTop: 14 }}>
         <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
