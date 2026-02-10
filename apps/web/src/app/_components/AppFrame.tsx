@@ -104,7 +104,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
 
   const runsSubnav = useMemo<NavItem[]>(() => {
     const items: NavItem[] = [
-      { href: "/runs", label: "All runs", icon: <span className="subnavDot" aria-hidden="true" /> }
+      { href: "/runs", label: "All runs", icon: <span className="subnavDot" aria-hidden="true" />, match: "exact" }
     ];
     if (pathname.startsWith("/runs/")) {
       const runId = pathname.slice("/runs/".length).split("/")[0] ?? "";
