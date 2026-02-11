@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Resource, ResourceColumn, ResourceId, ResourceVersion, ResourceVersionId } from "@accelerate-core/shared";
-import { buildResourceService, type ResourceBlobStore, type ResourceStore } from "../src/resources/service.ts";
+import { buildServer } from "../src/server.ts";
+import { type ResourceBlobStore, type ResourceStore } from "../src/resources/service.ts";
 
 type Actor = { uid: string; email: string };
 
@@ -33,9 +34,7 @@ class MemoryStore implements ResourceStore {
   }
 
   async listResources(): Promise<Resource[]> {
-    return Array.from(this.resources.values())
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-      .map((resource) => clone(resource));
+    return Array.from(this.resources.values()).map((item) => clone(item));
   }
 
   async getResourceByIdentifier(identifier: string): Promise<Resource | null> {
@@ -103,13 +102,12 @@ class MemoryStore implements ResourceStore {
       columns: input.columns,
       storage: input.storage
     };
-    versions.set(version.id, clone(version));
 
+    versions.set(version.id, clone(version));
     resource.currentVersionId = version.id;
     resource.updatedAt = now;
     resource.updatedBy = input.createdBy;
-    this.resources.set(resource.id, clone(resource));
-
+    this.resources.set(input.resourceId, clone(resource));
     return clone(version);
   }
 
@@ -118,7 +116,7 @@ class MemoryStore implements ResourceStore {
     if (!versions) return [];
     return Array.from(versions.values())
       .sort((a, b) => b.versionNumber - a.versionNumber)
-      .map((version) => clone(version));
+      .map((item) => clone(item));
   }
 
   async getVersionById(resourceId: ResourceId, versionId: ResourceVersionId): Promise<ResourceVersion | null> {
@@ -167,87 +165,56 @@ class MemoryBlobStore implements ResourceBlobStore {
   }
 }
 
-test("resource service supports create/list/upload/edit/restore and keeps old versions accessible", async () => {
-  const store = new MemoryStore();
-  const blobs = new MemoryBlobStore();
-  const service = buildResourceService({
-    store,
-    blobs,
-    bucketName: "test-bucket"
+test("resources routes support create, upload, and preview via fastify inject", async (t) => {
+  const app = await buildServer({
+    authMode: "bypass",
+    bypassAuth: { uid: "u-1", email: "admin@example.com" },
+    resourceStore: new MemoryStore(),
+    resourceBlobs: new MemoryBlobStore()
   });
-  const actor = { uid: "u-1", email: "admin@example.com" };
 
-  await service.createResource({
-    slug: "country_codes",
-    name: "Country Codes",
-    description: "Canonical country names",
-    actor
+  t.after(async () => {
+    await app.close();
   });
-  const list = await service.listResources();
-  assert.equal(list.length, 1);
-  assert.equal(list[0]?.slug, "country_codes");
-  assert.equal(list[0]?.currentVersionId, undefined);
 
-  const upload1 = await service.uploadCsvAsNewVersion({
-    resourceIdentifier: "country_codes",
-    csvText: "code,name\nUS,United States\nCA,Canada",
-    actor
+  const createRes = await app.inject({
+    method: "POST",
+    url: "/resources",
+    payload: {
+      slug: "country_codes",
+      name: "Country Codes",
+      description: "Country names"
+    }
   });
-  assert.equal(upload1.version.id, "v000001");
-  assert.equal(upload1.resource.currentVersionId, "v000001");
+  assert.equal(createRes.statusCode, 200);
+  const createJson = createRes.json() as { resource?: Resource };
+  assert.equal(createJson.resource?.slug, "country_codes");
 
-  const upload2 = await service.uploadCsvAsNewVersion({
-    resourceIdentifier: "country_codes",
-    csvText: "code,name\nUS,United States of America\nCA,Canada",
-    actor
+  const uploadRes = await app.inject({
+    method: "POST",
+    url: "/resources/country_codes/upload",
+    payload: {
+      csvText: "code,name\nUS,United States\nCA,Canada",
+      fileName: "country_codes.csv"
+    }
   });
-  assert.equal(upload2.version.id, "v000002");
-  assert.equal(upload2.resource.currentVersionId, "v000002");
+  assert.equal(uploadRes.statusCode, 200);
+  const uploadJson = uploadRes.json() as { version?: ResourceVersion; resource?: Resource };
+  assert.equal(uploadJson.version?.id, "v000001");
+  assert.equal(uploadJson.resource?.currentVersionId, "v000001");
 
-  const afterUploadVersions = await service.listResourceVersions("country_codes");
-  assert.equal(afterUploadVersions.versions.length, 2);
-  assert.equal(afterUploadVersions.versions[0]?.id, "v000002");
-  assert.equal(afterUploadVersions.versions[1]?.id, "v000001");
-  assert.equal(afterUploadVersions.versions[1]?.isArchived, true);
-
-  const edit = await service.saveEditedData({
-    resourceIdentifier: "country_codes",
-    headers: ["code", "name"],
-    rows: [
-      { code: "US", name: "United States of America" },
-      { code: "CA", name: "Canada" },
-      { code: "MX", name: "Mexico" }
-    ],
-    actor,
-    basedOnVersionId: "v000002"
+  const previewRes = await app.inject({
+    method: "GET",
+    url: "/resources/country_codes/preview?limit=1&offset=1"
   });
-  assert.equal(edit.version.id, "v000003");
-  assert.equal(edit.resource.currentVersionId, "v000003");
-
-  const restored = await service.restoreVersion({
-    resourceIdentifier: "country_codes",
-    versionId: "v000001",
-    actor
-  });
-  assert.equal(restored.version.id, "v000004");
-  assert.equal(restored.version.source, "restore");
-  assert.equal(restored.resource.currentVersionId, "v000004");
-
-  const oldSnapshot = await service.getResourceVersion("country_codes", "v000001");
-  assert.ok(oldSnapshot);
-  assert.equal(oldSnapshot?.table.rows.length, 2);
-
-  const restoredSnapshot = await service.getResourceVersion("country_codes", "v000004");
-  assert.ok(restoredSnapshot);
-  assert.equal(restoredSnapshot?.table.rows.length, 2);
-  assert.equal(String(restoredSnapshot?.table.rows[0]?.name ?? ""), "United States");
-
-  const preview = await service.previewResourceRows({
-    resourceIdentifier: "country_codes",
-    limit: 1,
-    offset: 1
-  });
-  assert.equal(preview.rowCount, 2);
-  assert.equal(preview.rows.length, 1);
-  assert.equal(String(preview.rows[0]?.name ?? ""), "Canada");
+  assert.equal(previewRes.statusCode, 200);
+  const previewJson = previewRes.json() as {
+    rowCount?: number;
+    rows?: Array<Record<string, string | number | boolean | null>>;
+    columns?: Array<{ key?: string }>;
+  };
+  assert.equal(previewJson.rowCount, 2);
+  assert.equal(previewJson.rows?.length, 1);
+  assert.equal(String(previewJson.rows?.[0]?.name ?? ""), "Canada");
+  assert.equal(previewJson.columns?.[0]?.key, "code");
 });

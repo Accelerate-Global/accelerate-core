@@ -48,8 +48,10 @@ Runtime config:
 - `apps/web/src/app/api/runs/[runId]/raw/route.ts` (converts API NDJSON artifact stream to CSV download)
 - `apps/web/src/app/api/resources/route.ts` (proxy to API `/resources`)
 - `apps/web/src/app/api/resources/[resourceSlug]/route.ts` (proxy to API `/resources/:slug`)
-- `apps/web/src/app/api/resources/[resourceSlug]/versions/route.ts` (proxy to API `/resources/:slug/versions`)
-- `apps/web/src/app/api/resources/[resourceSlug]/versions/[versionId]/route.ts` (proxy to API `/resources/:slug/versions/:versionId`)
+- `apps/web/src/app/api/resources/[resourceSlug]/upload/route.ts` (accepts multipart CSV from browser and proxies to API upload)
+- `apps/web/src/app/api/resources/[resourceSlug]/preview/route.ts` (proxy to API preview pagination)
+- `apps/web/src/app/api/resources/[resourceSlug]/versions/route.ts` (proxy to API `/resources/:resourceId/versions`)
+- `apps/web/src/app/api/resources/[resourceSlug]/versions/[versionId]/route.ts` (proxy to API `/resources/:resourceId/versions/:versionId`)
 - `apps/web/src/app/api/resources/[resourceSlug]/versions/[versionId]/restore/route.ts` (proxy to API restore)
 - `apps/web/src/app/api/resources/[resourceSlug]/current/route.ts` (proxy to API set current version)
 - `apps/web/src/app/api/resources/[resourceSlug]/data/route.ts` (proxy to API save edited data)
@@ -71,6 +73,7 @@ Routes (placeholders):
 - `/resources/tables/[resourceSlug]`
 - `/resources/tables/[resourceSlug]/versions`
 - `/resources/tables/[resourceSlug]/versions/[versionId]`
+- Resource detail page supports CSV multipart upload with progress + paginated preview table.
 
 API proxy routes (server-side):
 - `/api/query` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/query` (returns `{ rows }`)
@@ -80,12 +83,14 @@ API proxy routes (server-side):
 - `/api/runs/[runId]/logs` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id/logs` (returns `{ logs }`)
 - `/api/runs/[runId]/raw` fetches `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id/raw`, converts NDJSON to CSV, and streams `text/csv` download
 - `/api/resources` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources`
-- `/api/resources/[resourceSlug]` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:slug`
-- `/api/resources/[resourceSlug]/versions` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:slug/versions`
-- `/api/resources/[resourceSlug]/versions/[versionId]` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:slug/versions/:versionId`
-- `/api/resources/[resourceSlug]/versions/[versionId]/restore` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:slug/versions/:versionId/restore`
-- `/api/resources/[resourceSlug]/current` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:slug/current`
-- `/api/resources/[resourceSlug]/data` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:slug/data`
+- `/api/resources/[resourceSlug]` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:resourceId`
+- `/api/resources/[resourceSlug]/upload` accepts multipart CSV uploads and forwards JSON `{ csvText, fileName }` to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:resourceId/upload`
+- `/api/resources/[resourceSlug]/preview` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:resourceId/preview`
+- `/api/resources/[resourceSlug]/versions` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:resourceId/versions`
+- `/api/resources/[resourceSlug]/versions/[versionId]` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:resourceId/versions/:versionId`
+- `/api/resources/[resourceSlug]/versions/[versionId]/restore` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:resourceId/versions/:versionId/restore`
+- `/api/resources/[resourceSlug]/current` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:resourceId/current`
+- `/api/resources/[resourceSlug]/data` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:resourceId/data`
 - Requests forward `Authorization: Bearer <Firebase ID token>` from the browser to the API.
 
 Admin allowlist (V1 internal-only):

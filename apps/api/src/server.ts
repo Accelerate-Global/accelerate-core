@@ -32,14 +32,26 @@ import {
   CsvValidationError,
   buildResourceService,
   createFirestoreResourceStore,
-  createGcsBlobStore
+  createGcsBlobStore,
+  type ResourceBlobStore,
+  type ResourceStore
 } from "./resources/service";
 
 function getArtifactsBucket(): string {
   return process.env.ARTIFACTS_BUCKET ?? PROJECT_IDS.artifactsBucketDefault;
 }
 
-export async function buildServer(): Promise<FastifyInstance> {
+type BuildServerOptions = {
+  resourceStore?: ResourceStore;
+  resourceBlobs?: ResourceBlobStore;
+  authMode?: "enforce" | "bypass";
+  bypassAuth?: {
+    uid: string;
+    email: string;
+  };
+};
+
+export async function buildServer(options: BuildServerOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({
     logger: true
   });
@@ -72,6 +84,14 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   // Authn/authz pre-handler (V1: internal-only).
   app.addHook("preHandler", async (req) => {
+    if (options.authMode === "bypass") {
+      (req as unknown as { auth: { uid: string; email: string } }).auth = options.bypassAuth ?? {
+        uid: "test-user",
+        email: "test@example.com"
+      };
+      return;
+    }
+
     if (
       req.url === "/health" ||
       req.url.startsWith("/health?") ||
@@ -88,8 +108,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
 
   const resourceService = buildResourceService({
-    store: createFirestoreResourceStore(),
-    blobs: createGcsBlobStore({
+    store: options.resourceStore ?? createFirestoreResourceStore(),
+    blobs: options.resourceBlobs ?? createGcsBlobStore({
       projectId: process.env.GOOGLE_CLOUD_PROJECT ?? PROJECT_IDS.gcpProjectId,
       bucketName: getArtifactsBucket()
     }),
@@ -241,20 +261,20 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
   });
 
-  app.get("/resources/:slug", async (req) => {
-    const params = z.object({ slug: z.string().min(1) }).parse(req.params);
-    const snapshot = await resourceService.getResourceWithCurrentTable(params.slug);
+  app.get("/resources/:resourceId", async (req) => {
+    const params = z.object({ resourceId: z.string().min(1) }).parse(req.params);
+    const snapshot = await resourceService.getResourceWithCurrentTable(params.resourceId);
     if (!snapshot) throw new HttpError(404, "Resource not found");
     return snapshot;
   });
 
-  app.post("/resources/:slug/versions", async (req) => {
-    const params = z.object({ slug: z.string().min(1) }).parse(req.params);
+  app.post("/resources/:resourceId/upload", async (req) => {
+    const params = z.object({ resourceId: z.string().min(1) }).parse(req.params);
     const auth = (req as unknown as { auth: { uid: string; email: string } }).auth;
     const body = UploadResourceVersionRequestSchema.parse(req.body);
     try {
       const result = await resourceService.uploadCsvAsNewVersion({
-        slug: params.slug,
+        resourceIdentifier: params.resourceId,
         csvText: body.csvText,
         actor: auth
       });
@@ -264,28 +284,49 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
   });
 
-  app.get("/resources/:slug/versions", async (req) => {
-    const params = z.object({ slug: z.string().min(1) }).parse(req.params);
+  app.get("/resources/:resourceId/preview", async (req) => {
+    const params = z.object({ resourceId: z.string().min(1) }).parse(req.params);
+    const query = z
+      .object({
+        limit: z.coerce.number().int().min(1).max(1000).optional(),
+        offset: z.coerce.number().int().min(0).optional(),
+        versionId: z.string().min(1).optional()
+      })
+      .parse(req.query);
     try {
-      return await resourceService.listResourceVersions(params.slug);
+      return await resourceService.previewResourceRows({
+        resourceIdentifier: params.resourceId,
+        limit: query.limit,
+        offset: query.offset,
+        versionId: query.versionId
+      });
     } catch (err) {
       throwResourceError(err);
     }
   });
 
-  app.get("/resources/:slug/versions/:versionId", async (req) => {
-    const params = z.object({ slug: z.string().min(1), versionId: z.string().min(1) }).parse(req.params);
-    const snapshot = await resourceService.getResourceVersion(params.slug, params.versionId);
+  app.get("/resources/:resourceId/versions", async (req) => {
+    const params = z.object({ resourceId: z.string().min(1) }).parse(req.params);
+    try {
+      return await resourceService.listResourceVersions(params.resourceId);
+    } catch (err) {
+      throwResourceError(err);
+    }
+  });
+
+  app.get("/resources/:resourceId/versions/:versionId", async (req) => {
+    const params = z.object({ resourceId: z.string().min(1), versionId: z.string().min(1) }).parse(req.params);
+    const snapshot = await resourceService.getResourceVersion(params.resourceId, params.versionId);
     if (!snapshot) throw new HttpError(404, "Resource/version not found");
     return snapshot;
   });
 
-  app.post("/resources/:slug/versions/:versionId/restore", async (req) => {
-    const params = z.object({ slug: z.string().min(1), versionId: z.string().min(1) }).parse(req.params);
+  app.post("/resources/:resourceId/versions/:versionId/restore", async (req) => {
+    const params = z.object({ resourceId: z.string().min(1), versionId: z.string().min(1) }).parse(req.params);
     const auth = (req as unknown as { auth: { uid: string; email: string } }).auth;
     try {
       return await resourceService.restoreVersion({
-        slug: params.slug,
+        resourceIdentifier: params.resourceId,
         versionId: params.versionId,
         actor: auth
       });
@@ -294,13 +335,13 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
   });
 
-  app.patch("/resources/:slug/current", async (req) => {
-    const params = z.object({ slug: z.string().min(1) }).parse(req.params);
+  app.patch("/resources/:resourceId/current", async (req) => {
+    const params = z.object({ resourceId: z.string().min(1) }).parse(req.params);
     const auth = (req as unknown as { auth: { uid: string; email: string } }).auth;
     const body = PatchResourceCurrentVersionRequestSchema.parse(req.body);
     try {
       const resource = await resourceService.setCurrentVersion({
-        slug: params.slug,
+        resourceIdentifier: params.resourceId,
         versionId: body.versionId,
         actor: auth
       });
@@ -310,19 +351,35 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
   });
 
-  app.patch("/resources/:slug/data", async (req) => {
-    const params = z.object({ slug: z.string().min(1) }).parse(req.params);
+  app.patch("/resources/:resourceId/data", async (req) => {
+    const params = z.object({ resourceId: z.string().min(1) }).parse(req.params);
     const auth = (req as unknown as { auth: { uid: string; email: string } }).auth;
     const body = PatchResourceDataRequestSchema.parse(req.body);
     try {
       const result = await resourceService.saveEditedData({
-        slug: params.slug,
+        resourceIdentifier: params.resourceId,
         headers: body.columns,
         rows: body.rows,
         actor: auth,
         basedOnVersionId: body.basedOnVersionId
       });
       return result;
+    } catch (err) {
+      throwResourceError(err);
+    }
+  });
+
+  // Backward-compatible resource aliases.
+  app.post("/resources/:resourceId/versions", async (req) => {
+    const params = z.object({ resourceId: z.string().min(1) }).parse(req.params);
+    const auth = (req as unknown as { auth: { uid: string; email: string } }).auth;
+    const body = UploadResourceVersionRequestSchema.parse(req.body);
+    try {
+      return await resourceService.uploadCsvAsNewVersion({
+        resourceIdentifier: params.resourceId,
+        csvText: body.csvText,
+        actor: auth
+      });
     } catch (err) {
       throwResourceError(err);
     }
