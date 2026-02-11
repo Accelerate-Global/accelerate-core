@@ -59,6 +59,15 @@ To run a single package:
 - Do not commit secrets. Deployment pulls secrets from Secret Manager (or equivalent) into env vars.
 - Connector secrets must be provided via env vars at deploy time (example: `JOSHUA_PROJECT_API_KEY`).
 
+## Deploy Flow (Mandatory)
+- After every merged PR, immediately redeploy the web app on Firebase App Hosting.
+- Command:
+  - `firebase apphosting:rollouts:create accelerate-core --project accelerate-global-473318 --git-branch main --force`
+- After merge and deploy, clean up branches:
+  - Fetch/prune refs: `git fetch --prune`
+  - Delete merged local branch: `git branch -d <branch-name>`
+  - Delete merged remote branch: `git push origin --delete <branch-name>`
+
 ## Docs Index (Placeholders)
 - Firebase config/rules/indexes: `infra/firebase/`
 - Cloud Run service scaffolds: `apps/api/`, `apps/worker/`
