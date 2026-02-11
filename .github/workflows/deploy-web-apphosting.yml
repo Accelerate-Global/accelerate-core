@@ -71,7 +71,23 @@ jobs:
             exit 1
           fi
 
+      - name: Skip if this commit is already deployed or deploying
+        id: precheck
+        run: |
+          set -euo pipefail
+          token="$(gcloud auth print-access-token)"
+          builds_url="https://firebaseapphosting.googleapis.com/v1beta/projects/${PROJECT_ID}/locations/${REGION}/backends/${BACKEND_ID}/builds?pageSize=100&fields=builds(name,state,source/codebase/hash)"
+          existing="$(curl --fail --silent --show-error -H "Authorization: Bearer ${token}" "${builds_url}" | jq -r --arg sha "${GITHUB_SHA}" '[.builds[] | select(.source.codebase.hash == $sha and (.state == "BUILDING" or .state == "BUILT" or .state == "DEPLOYING" or .state == "READY"))] | length')"
+          if [ "${existing}" -gt 0 ]; then
+            echo "Found ${existing} existing App Hosting build(s) for commit ${GITHUB_SHA}; skipping new rollout."
+            echo "should_deploy=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "No existing App Hosting build found for commit ${GITHUB_SHA}; creating rollout."
+            echo "should_deploy=true" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Deploy commit to App Hosting
+        if: steps.precheck.outputs.should_deploy == 'true'
         run: |
           set -euo pipefail
           firebase apphosting:rollouts:create "${BACKEND_ID}" \
