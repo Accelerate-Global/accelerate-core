@@ -16,6 +16,9 @@ export type RunId = string;
 export type ConnectorId = string;
 export type DatasetId = string;
 export type DatasetVersionId = string;
+export type ResourceId = string;
+export type ResourceSlug = string;
+export type ResourceVersionId = string;
 
 export type Run = {
   id: RunId;
@@ -90,6 +93,62 @@ export type Connector = {
   updatedAt: string; // ISO
 };
 
+export type ResourceColumnType = "string" | "number" | "boolean" | "json";
+export type ResourceColumn = {
+  key: string;
+  label: string;
+  type: ResourceColumnType;
+};
+export type ResourceRowValue = string | number | boolean | null;
+export type ResourceRow = Record<string, ResourceRowValue>;
+export type ResourceTable = {
+  columns: ResourceColumn[];
+  rows: ResourceRow[];
+};
+
+export type Resource = {
+  id: ResourceId; // equals slug in v1
+  slug: ResourceSlug;
+  name: string;
+  description?: string;
+  createdAt: string; // ISO
+  updatedAt: string; // ISO
+  createdBy: {
+    uid: string;
+    email: string;
+  };
+  updatedBy: {
+    uid: string;
+    email: string;
+  };
+  currentVersionId?: ResourceVersionId;
+  nextVersionNumber: number;
+};
+
+export type ResourceVersionSource = "csv_upload" | "edit" | "restore";
+export type ResourceVersion = {
+  id: ResourceVersionId; // v000001
+  resourceId: ResourceId;
+  slug: ResourceSlug;
+  versionNumber: number;
+  createdAt: string; // ISO
+  createdBy: {
+    uid: string;
+    email: string;
+  };
+  source: ResourceVersionSource;
+  basedOnVersionId?: ResourceVersionId;
+  isArchived: boolean;
+  rowCount: number;
+  columnCount: number;
+  columns: ResourceColumn[];
+  storage: {
+    bucket: string;
+    rawCsvPath: string;
+    tableJsonPath: string;
+  };
+};
+
 export const CONNECTOR_IDS = {
   joshuaProjectPgic: "joshuaproject_pgic"
 } as const;
@@ -122,6 +181,39 @@ export const ExportRequestSchema = z.object({
 });
 export type ExportRequest = z.infer<typeof ExportRequestSchema>;
 
+export const ResourceSlugSchema = z
+  .string()
+  .min(2)
+  .max(64)
+  .regex(/^[a-z0-9_]+$/, "Slug must contain only lowercase letters, numbers, and underscores");
+
+export const CreateResourceRequestSchema = z.object({
+  slug: ResourceSlugSchema,
+  name: z.string().min(1).max(120),
+  description: z.string().max(1000).optional()
+});
+export type CreateResourceRequest = z.infer<typeof CreateResourceRequestSchema>;
+
+export const UploadResourceVersionRequestSchema = z.object({
+  csvText: z.string().min(1),
+  fileName: z.string().max(255).optional()
+});
+export type UploadResourceVersionRequest = z.infer<typeof UploadResourceVersionRequestSchema>;
+
+export const PatchResourceCurrentVersionRequestSchema = z.object({
+  versionId: z.string().min(1)
+});
+export type PatchResourceCurrentVersionRequest = z.infer<typeof PatchResourceCurrentVersionRequestSchema>;
+
+const ResourceRowValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+
+export const PatchResourceDataRequestSchema = z.object({
+  columns: z.array(z.string().min(1)).min(1).max(300),
+  rows: z.array(z.record(ResourceRowValueSchema)).max(10000),
+  basedOnVersionId: z.string().min(1).optional()
+});
+export type PatchResourceDataRequest = z.infer<typeof PatchResourceDataRequestSchema>;
+
 export function padVersionNumber(n: number, width = 6): string {
   const s = String(Math.max(0, Math.trunc(n)));
   return s.length >= width ? s : "0".repeat(width - s.length) + s;
@@ -129,6 +221,10 @@ export function padVersionNumber(n: number, width = 6): string {
 
 export function formatVersionId(versionNumber: number): DatasetVersionId {
   return `v${padVersionNumber(versionNumber)}` as DatasetVersionId;
+}
+
+export function formatResourceVersionId(versionNumber: number): ResourceVersionId {
+  return `v${padVersionNumber(versionNumber)}` as ResourceVersionId;
 }
 
 export function formatVersionedTableId(datasetId: DatasetId, versionNumber: number): string {

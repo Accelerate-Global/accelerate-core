@@ -18,6 +18,7 @@ Must not live here:
 - Build: `pnpm --filter @accelerate-core/api run build`
 - Typecheck: `pnpm --filter @accelerate-core/api run typecheck`
 - Lint: `pnpm --filter @accelerate-core/api run lint`
+- Test: `pnpm --filter @accelerate-core/api run test`
 
 Deploy (Cloud Run):
 - This repo ships a single Cloud Run image (root `Dockerfile`) and selects the service via `SERVICE_MODE`.
@@ -28,6 +29,8 @@ Deploy (Cloud Run):
 - `apps/api/src/server.ts` (Fastify setup + routes)
 - `apps/api/src/auth.ts` (Firebase ID token verification + allowlist enforcement)
 - `apps/api/src/workerClient.ts` (service-to-service kickoff to worker via Cloud Run IAM)
+- `apps/api/src/resources/service.ts` (resource CRUD/version orchestration)
+- `apps/api/src/resources/csv.ts` (CSV validation + parse/serialize helpers)
 
 ## Interfaces / Contracts
 Authn:
@@ -44,6 +47,15 @@ HTTP endpoints (V1):
 - `GET /runs/:id/raw` (streams the raw NDJSON artifact as a download if available)
 - `POST /query` (QueryRequest: `{ datasetId, versionId?, limit? }`) -> `{ rows }` (preview `LIMIT` 100 default)
 - `POST /exports` -> `501` (stub)
+- `GET /resources` -> `{ resources }`
+- `POST /resources` (CreateResourceRequest: `{ slug, name, description? }`) -> `{ resource }`
+- `GET /resources/:slug` -> `{ resource, currentVersion, table }`
+- `POST /resources/:slug/versions` (UploadResourceVersionRequest: `{ csvText, fileName? }`) -> `{ resource, version }`
+- `GET /resources/:slug/versions` -> `{ resource, versions }`
+- `GET /resources/:slug/versions/:versionId` -> `{ resource, version, table }`
+- `POST /resources/:slug/versions/:versionId/restore` -> `{ resource, version }` (restore as new version)
+- `PATCH /resources/:slug/current` (PatchResourceCurrentVersionRequest: `{ versionId }`) -> `{ resource }`
+- `PATCH /resources/:slug/data` (PatchResourceDataRequest: `{ columns, rows, basedOnVersionId? }`) -> `{ resource, version }` (edits saved as new version)
 
 Worker kickoff:
 - `POST /runs` best-effort triggers worker via `WORKER_BASE_URL` using Cloud Run IAM.

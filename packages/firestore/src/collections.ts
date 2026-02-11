@@ -3,6 +3,8 @@ export const COLLECTIONS = {
   datasets: "datasets",
   connectors: "connectors",
   datasetVersions: "dataset_versions",
+  resources: "resources",
+  resourceVersions: "resource_versions",
   runLeases: "runLeases"
 } as const;
 
