@@ -66,11 +66,13 @@ To run a single package:
   - Merge PR to `main`.
   - Return local repo to `main`.
   - Clean up merged branches (local + remote).
-  - Redeploy Firebase App Hosting.
-- After every merged PR, immediately redeploy the web app on Firebase App Hosting.
-- Command:
-  - `firebase apphosting:rollouts:create accelerate-core --project accelerate-global-473318 --git-branch main --force`
-- After merge and deploy, clean up branches:
+  - Confirm GitHub Actions web deploy completed (do not run a local deploy unless explicitly requested for incident response).
+- Deployment authority for `apps/web` is GitHub Actions only:
+  - Workflow: `.github/workflows/deploy-web-apphosting.yml`
+  - Trigger: `push` to `main` (plus optional manual dispatch)
+  - Concurrency guard prevents overlapping deploy runs.
+- Local/CLI deploy commands are dev-only and must never run implicitly from agent workflow instructions.
+- After merge and workflow deploy, clean up branches:
   - Fetch/prune refs: `git fetch --prune`
   - Delete merged local branch: `git branch -d <branch-name>`
   - Delete merged remote branch: `git push origin --delete <branch-name>`
