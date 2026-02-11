@@ -30,7 +30,7 @@ Commands:
 - Build: `pnpm run build`
 - Typecheck: `pnpm run typecheck`
 - Lint: `pnpm run lint`
-- Test (placeholder): `pnpm run test`
+- Test: `pnpm run test`
 - Dev (all packages with `dev`): `pnpm run dev`
 
 To run a single package:
@@ -54,6 +54,9 @@ To run a single package:
   - Firebase project: `accelerate-global-473318`
   - BigQuery dataset: `accelerate_dev`
   - First dataset slug: `pgic_people_groups`
+- Resources (V1):
+  - Top-level web navigation section: `/resources`.
+  - Resource tables are versioned snapshots (CSV upload/edit/restore create a new version; old versions remain accessible).
 
 ## Security Notes
 - Do not commit secrets. Deployment pulls secrets from Secret Manager (or equivalent) into env vars.

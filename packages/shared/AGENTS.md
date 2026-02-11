@@ -24,7 +24,11 @@ Must not live here:
 ## Interfaces / Contracts
 - Exports are consumed as `@accelerate-core/shared`.
 - Constants include project identifiers (GCP/Firebase/BigQuery) and stable `connectorId` / `datasetId` strings.
-- Request contracts are defined with Zod (ex: `CreateRunRequestSchema`, `QueryRequestSchema`).
+- Request contracts are defined with Zod (examples: `CreateRunRequestSchema`, `QueryRequestSchema`, `CreateResourceRequestSchema`).
+- Resources contract includes:
+  - `Resource` metadata (`slug`, `currentVersionId`, `nextVersionNumber`, audit fields)
+  - `ResourceVersion` immutable snapshots (`source`, `columns`, `rowCount`, storage paths)
+  - resource mutation schemas (`UploadResourceVersionRequestSchema`, `PatchResourceDataRequestSchema`, `PatchResourceCurrentVersionRequestSchema`)
 
 ## Security Notes (Secrets, Authz)
 - Do not add any secret values here.

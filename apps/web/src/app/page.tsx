@@ -25,6 +25,9 @@ export default function HomePage() {
           <Link className="btn" href="/datasets">
             View datasets
           </Link>
+          <Link className="btn" href="/resources">
+            View resources
+          </Link>
         </div>
       </div>
     </Page>

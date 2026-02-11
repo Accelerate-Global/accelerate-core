@@ -5,7 +5,7 @@ Firestore data access layer (DAL) and typed repository functions used by `apps/a
 
 ## What Lives Here / What Must Not
 Lives here:
-- Repository functions for Runs/Datasets/Connectors/Versions
+- Repository functions for Runs/Datasets/Connectors/Resources/Versions
 - Lease/lock primitives (used for sequential worker execution)
 
 Must not live here:
@@ -24,6 +24,8 @@ Must not live here:
 - `packages/firestore/src/runLogs.ts`
 - `packages/firestore/src/datasets.ts`
 - `packages/firestore/src/datasetVersions.ts`
+- `packages/firestore/src/resources.ts`
+- `packages/firestore/src/resourceVersions.ts`
 - `packages/firestore/src/connectors.ts`
 - `packages/firestore/src/leases.ts`
 
@@ -34,11 +36,15 @@ Must not live here:
   - `runs/{runId}/logs/{logId}` (append-only run log entries)
   - `datasets/{datasetId}`
   - `dataset_versions/{datasetId}/versions/{versionId}` (versionId is `v000001`, `v000002`, ...)
+  - `resources/{resourceSlug}`
+  - `resource_versions/{resourceSlug}/versions/{versionId}` (resource versions are immutable snapshots)
   - `runLeases/{runId}` (lease lock; worker should use this)
 
 Dataset versioning contract:
 - `datasets/{datasetId}.nextVersionNumber` is incremented to reserve the next version.
 - `datasets/{datasetId}.latestVersionId` points to the latest `dataset_versions/.../versions/{versionId}` doc.
+- `resources/{resourceSlug}.nextVersionNumber` is incremented to reserve the next resource version.
+- `resources/{resourceSlug}.currentVersionId` points to the active resource snapshot in `resource_versions/.../versions/{versionId}`.
 
 ## Security Notes (Secrets, Authz)
 - No secrets in repo. Cloud Run should use workload identity / ADC.

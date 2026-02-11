@@ -86,3 +86,17 @@ export function IconRuns(props: IconProps) {
   );
 }
 
+export function IconResources(props: IconProps) {
+  return (
+    <svg {...baseProps(props)}>
+      {props.title ? <title>{props.title}</title> : null}
+      <path
+        d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M4 10h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}

@@ -4,11 +4,15 @@ import { z } from "zod";
 import { Storage } from "@google-cloud/storage";
 
 import {
+  CreateResourceRequestSchema,
   CreateRunRequestSchema,
   CreateRunResponseSchema,
   ExportRequestSchema,
+  PatchResourceCurrentVersionRequestSchema,
+  PatchResourceDataRequestSchema,
   PROJECT_IDS,
-  QueryRequestSchema
+  QueryRequestSchema,
+  UploadResourceVersionRequestSchema
 } from "@accelerate-core/shared";
 import { previewRowsFromTable } from "@accelerate-core/bq";
 import {
@@ -24,6 +28,12 @@ import {
 
 import { assertIsAllowedAdmin, getAuthContextFromRequest, HttpError } from "./auth";
 import { kickoffWorkerRun } from "./workerClient";
+import {
+  CsvValidationError,
+  buildResourceService,
+  createFirestoreResourceStore,
+  createGcsBlobStore
+} from "./resources/service";
 
 function getArtifactsBucket(): string {
   return process.env.ARTIFACTS_BUCKET ?? PROJECT_IDS.artifactsBucketDefault;
@@ -36,8 +46,18 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   app.setErrorHandler((err, req, reply) => {
     const httpErr = err instanceof HttpError ? err : null;
-    const statusCode = httpErr?.statusCode ?? 500;
-    const message = httpErr?.expose ? httpErr.message : "Internal Server Error";
+    const zodErr = err instanceof z.ZodError ? err : null;
+    const csvErr = err instanceof CsvValidationError ? err : null;
+
+    const statusCode = httpErr?.statusCode ?? (zodErr ? 400 : csvErr ? 400 : 500);
+    const message =
+      httpErr?.expose
+        ? httpErr.message
+        : zodErr
+          ? (zodErr.issues[0]?.message ?? "Invalid request")
+          : csvErr
+            ? csvErr.message
+            : "Internal Server Error";
     if (statusCode >= 500) req.log.error({ err }, "unhandled error");
     void reply.status(statusCode).send({ error: message });
   });
@@ -66,6 +86,25 @@ export async function buildServer(): Promise<FastifyInstance> {
     assertIsAllowedAdmin(auth.email);
     (req as unknown as { auth: typeof auth }).auth = auth;
   });
+
+  const resourceService = buildResourceService({
+    store: createFirestoreResourceStore(),
+    blobs: createGcsBlobStore({
+      projectId: process.env.GOOGLE_CLOUD_PROJECT ?? PROJECT_IDS.gcpProjectId,
+      bucketName: getArtifactsBucket()
+    }),
+    bucketName: getArtifactsBucket()
+  });
+
+  function throwResourceError(err: unknown): never {
+    if (err instanceof CsvValidationError) {
+      throw new HttpError(400, err.message);
+    }
+    const message = err instanceof Error ? err.message : "Resource operation failed";
+    if (/already exists/i.test(message)) throw new HttpError(409, message);
+    if (/not found/i.test(message)) throw new HttpError(404, message);
+    throw err;
+  }
 
   app.post("/runs", async (req) => {
     const body = CreateRunRequestSchema.parse(req.body);
@@ -179,6 +218,114 @@ export async function buildServer(): Promise<FastifyInstance> {
     void reply.header("content-type", "application/x-ndjson");
     void reply.header("content-disposition", `attachment; filename=\"${filename}\"`);
     return reply.send(file.createReadStream());
+  });
+
+  app.get("/resources", async () => {
+    const resources = await resourceService.listResources(200);
+    return { resources };
+  });
+
+  app.post("/resources", async (req) => {
+    const auth = (req as unknown as { auth: { uid: string; email: string } }).auth;
+    const body = CreateResourceRequestSchema.parse(req.body);
+    try {
+      const resource = await resourceService.createResource({
+        slug: body.slug,
+        name: body.name,
+        description: body.description,
+        actor: auth
+      });
+      return { resource };
+    } catch (err) {
+      throwResourceError(err);
+    }
+  });
+
+  app.get("/resources/:slug", async (req) => {
+    const params = z.object({ slug: z.string().min(1) }).parse(req.params);
+    const snapshot = await resourceService.getResourceWithCurrentTable(params.slug);
+    if (!snapshot) throw new HttpError(404, "Resource not found");
+    return snapshot;
+  });
+
+  app.post("/resources/:slug/versions", async (req) => {
+    const params = z.object({ slug: z.string().min(1) }).parse(req.params);
+    const auth = (req as unknown as { auth: { uid: string; email: string } }).auth;
+    const body = UploadResourceVersionRequestSchema.parse(req.body);
+    try {
+      const result = await resourceService.uploadCsvAsNewVersion({
+        slug: params.slug,
+        csvText: body.csvText,
+        actor: auth
+      });
+      return result;
+    } catch (err) {
+      throwResourceError(err);
+    }
+  });
+
+  app.get("/resources/:slug/versions", async (req) => {
+    const params = z.object({ slug: z.string().min(1) }).parse(req.params);
+    try {
+      return await resourceService.listResourceVersions(params.slug);
+    } catch (err) {
+      throwResourceError(err);
+    }
+  });
+
+  app.get("/resources/:slug/versions/:versionId", async (req) => {
+    const params = z.object({ slug: z.string().min(1), versionId: z.string().min(1) }).parse(req.params);
+    const snapshot = await resourceService.getResourceVersion(params.slug, params.versionId);
+    if (!snapshot) throw new HttpError(404, "Resource/version not found");
+    return snapshot;
+  });
+
+  app.post("/resources/:slug/versions/:versionId/restore", async (req) => {
+    const params = z.object({ slug: z.string().min(1), versionId: z.string().min(1) }).parse(req.params);
+    const auth = (req as unknown as { auth: { uid: string; email: string } }).auth;
+    try {
+      return await resourceService.restoreVersion({
+        slug: params.slug,
+        versionId: params.versionId,
+        actor: auth
+      });
+    } catch (err) {
+      throwResourceError(err);
+    }
+  });
+
+  app.patch("/resources/:slug/current", async (req) => {
+    const params = z.object({ slug: z.string().min(1) }).parse(req.params);
+    const auth = (req as unknown as { auth: { uid: string; email: string } }).auth;
+    const body = PatchResourceCurrentVersionRequestSchema.parse(req.body);
+    try {
+      const resource = await resourceService.setCurrentVersion({
+        slug: params.slug,
+        versionId: body.versionId,
+        actor: auth
+      });
+      return { resource };
+    } catch (err) {
+      throwResourceError(err);
+    }
+  });
+
+  app.patch("/resources/:slug/data", async (req) => {
+    const params = z.object({ slug: z.string().min(1) }).parse(req.params);
+    const auth = (req as unknown as { auth: { uid: string; email: string } }).auth;
+    const body = PatchResourceDataRequestSchema.parse(req.body);
+    try {
+      const result = await resourceService.saveEditedData({
+        slug: params.slug,
+        headers: body.columns,
+        rows: body.rows,
+        actor: auth,
+        basedOnVersionId: body.basedOnVersionId
+      });
+      return result;
+    } catch (err) {
+      throwResourceError(err);
+    }
   });
 
   app.post("/query", async (req) => {

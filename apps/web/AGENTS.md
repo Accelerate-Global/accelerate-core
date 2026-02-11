@@ -32,6 +32,12 @@ Runtime config:
 - `apps/web/src/app/connectors/joshuaproject/page.tsx` (run JP connector; embeds run details)
 - `apps/web/src/app/datasets/page.tsx`
 - `apps/web/src/app/datasets/pgic_people_groups/page.tsx` (dataset preview)
+- `apps/web/src/app/resources/page.tsx` (Resources overview)
+- `apps/web/src/app/resources/tables/page.tsx` (resource list + create form)
+- `apps/web/src/app/resources/tables/[resourceSlug]/page.tsx` (current version editor)
+- `apps/web/src/app/resources/tables/[resourceSlug]/versions/page.tsx` (version history + restore)
+- `apps/web/src/app/resources/tables/[resourceSlug]/versions/[versionId]/page.tsx` (read-only snapshot)
+- `apps/web/src/app/resources/_components/resource-table-editor.tsx` (TanStack editable table UI)
 - `apps/web/src/app/runs/page.tsx` (runs list)
 - `apps/web/src/app/runs/[runId]/page.tsx`
 - `apps/web/src/app/api/query/route.ts` (proxy to API `/query`)
@@ -40,6 +46,13 @@ Runtime config:
 - `apps/web/src/app/api/runs/[runId]/cancel/route.ts` (proxy to API `/runs/:id/cancel`)
 - `apps/web/src/app/api/runs/[runId]/logs/route.ts` (proxy to API `/runs/:id/logs`)
 - `apps/web/src/app/api/runs/[runId]/raw/route.ts` (converts API NDJSON artifact stream to CSV download)
+- `apps/web/src/app/api/resources/route.ts` (proxy to API `/resources`)
+- `apps/web/src/app/api/resources/[resourceSlug]/route.ts` (proxy to API `/resources/:slug`)
+- `apps/web/src/app/api/resources/[resourceSlug]/versions/route.ts` (proxy to API `/resources/:slug/versions`)
+- `apps/web/src/app/api/resources/[resourceSlug]/versions/[versionId]/route.ts` (proxy to API `/resources/:slug/versions/:versionId`)
+- `apps/web/src/app/api/resources/[resourceSlug]/versions/[versionId]/restore/route.ts` (proxy to API restore)
+- `apps/web/src/app/api/resources/[resourceSlug]/current/route.ts` (proxy to API set current version)
+- `apps/web/src/app/api/resources/[resourceSlug]/data/route.ts` (proxy to API save edited data)
 - `apps/web/src/lib/firebase/client.ts` (Firebase client placeholder)
 - `apps/web/src/lib/auth/AuthProvider.tsx` (Auth wiring placeholder)
 - `apps/web/src/lib/auth/AuthControls.tsx` (Google sign-in/out UI)
@@ -53,6 +66,11 @@ Routes (placeholders):
 - `/datasets/pgic_people_groups`
 - `/runs`
 - `/runs/[runId]`
+- `/resources`
+- `/resources/tables`
+- `/resources/tables/[resourceSlug]`
+- `/resources/tables/[resourceSlug]/versions`
+- `/resources/tables/[resourceSlug]/versions/[versionId]`
 
 API proxy routes (server-side):
 - `/api/query` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/query` (returns `{ rows }`)
@@ -61,6 +79,13 @@ API proxy routes (server-side):
 - `/api/runs/[runId]/cancel` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id/cancel`
 - `/api/runs/[runId]/logs` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id/logs` (returns `{ logs }`)
 - `/api/runs/[runId]/raw` fetches `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id/raw`, converts NDJSON to CSV, and streams `text/csv` download
+- `/api/resources` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources`
+- `/api/resources/[resourceSlug]` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:slug`
+- `/api/resources/[resourceSlug]/versions` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:slug/versions`
+- `/api/resources/[resourceSlug]/versions/[versionId]` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:slug/versions/:versionId`
+- `/api/resources/[resourceSlug]/versions/[versionId]/restore` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:slug/versions/:versionId/restore`
+- `/api/resources/[resourceSlug]/current` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:slug/current`
+- `/api/resources/[resourceSlug]/data` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/resources/:slug/data`
 - Requests forward `Authorization: Bearer <Firebase ID token>` from the browser to the API.
 
 Admin allowlist (V1 internal-only):
