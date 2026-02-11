@@ -11,7 +11,7 @@ import type {
 import {
   createResource as createResourceRecord,
   createResourceVersion,
-  getResourceBySlug,
+  getResourceByIdentifier,
   getResourceVersionById,
   listResources as listResourceRecords,
   listResourceVersions,
@@ -45,7 +45,7 @@ export type ResourceBlobStore = {
 export type ResourceStore = {
   createResource(input: { slug: string; name: string; description?: string; createdBy: Actor }): Promise<Resource>;
   listResources(limit?: number): Promise<Resource[]>;
-  getResourceBySlug(slug: string): Promise<Resource | null>;
+  getResourceByIdentifier(identifier: string): Promise<Resource | null>;
   reserveNextVersion(input: { resourceId: ResourceId }): Promise<ReserveResourceVersionResult>;
   createVersion(input: {
     resourceId: ResourceId;
@@ -118,6 +118,13 @@ function inferTableHeaders(columns: ResourceColumn[]): string[] {
   return columns.map((column) => column.key);
 }
 
+function parsePositiveInt(value: string | undefined, fallback: number): number {
+  if (!value) return fallback;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return parsed;
+}
+
 export function createGcsBlobStore(input: { projectId: string; bucketName: string }): ResourceBlobStore {
   const storage = new Storage({ projectId: input.projectId });
   const bucket = storage.bucket(input.bucketName);
@@ -140,7 +147,7 @@ export function createFirestoreResourceStore(): ResourceStore {
   return {
     createResource: createResourceRecord,
     listResources: listResourceRecords,
-    getResourceBySlug,
+    getResourceByIdentifier,
     reserveNextVersion: reserveNextResourceVersion,
     createVersion: createResourceVersion,
     listVersions: listResourceVersions,
@@ -152,9 +159,38 @@ export function createFirestoreResourceStore(): ResourceStore {
 export function buildResourceService(input: { store: ResourceStore; blobs: ResourceBlobStore; bucketName: string }) {
   const { store, blobs, bucketName } = input;
 
+  const maxCsvBytes = parsePositiveInt(process.env.RESOURCE_CSV_MAX_BYTES, 5_000_000);
+  const cacheTtlMs = parsePositiveInt(process.env.RESOURCE_TABLE_CACHE_TTL_MS, 30_000);
+  const cacheMaxEntries = parsePositiveInt(process.env.RESOURCE_TABLE_CACHE_MAX_ENTRIES, 25);
+  const tableCache = new Map<string, { expiresAt: number; table: ResourceTableSnapshot }>();
+
+  function getCachedTable(path: string): ResourceTableSnapshot | null {
+    const cached = tableCache.get(path);
+    if (!cached) return null;
+    if (cached.expiresAt < Date.now()) {
+      tableCache.delete(path);
+      return null;
+    }
+    return cached.table;
+  }
+
+  function setCachedTable(path: string, table: ResourceTableSnapshot): void {
+    tableCache.delete(path);
+    tableCache.set(path, { expiresAt: Date.now() + cacheTtlMs, table });
+    while (tableCache.size > cacheMaxEntries) {
+      const oldest = tableCache.keys().next().value;
+      if (!oldest) break;
+      tableCache.delete(oldest);
+    }
+  }
+
   async function readTableFromVersion(version: ResourceVersion): Promise<ResourceTableSnapshot> {
+    const cached = getCachedTable(version.storage.tableJsonPath);
+    if (cached) return cached;
     const raw = await blobs.readText(version.storage.tableJsonPath);
-    return parseStoredTable(raw);
+    const parsed = parseStoredTable(raw);
+    setCachedTable(version.storage.tableJsonPath, parsed);
+    return parsed;
   }
 
   async function createVersionFromTable(inputVersion: {
@@ -196,6 +232,12 @@ export function buildResourceService(input: { store: ResourceStore; blobs: Resou
     });
   }
 
+  async function resolveResource(identifier: string): Promise<Resource> {
+    const resource = await store.getResourceByIdentifier(identifier);
+    if (!resource) throw new Error("Resource not found");
+    return resource;
+  }
+
   return {
     async listResources(limit = 100): Promise<Resource[]> {
       return store.listResources(limit);
@@ -215,12 +257,12 @@ export function buildResourceService(input: { store: ResourceStore; blobs: Resou
       });
     },
 
-    async getResourceWithCurrentTable(slug: string): Promise<{
+    async getResourceWithCurrentTable(resourceIdentifier: string): Promise<{
       resource: Resource;
       currentVersion: ResourceVersion | null;
       table: ResourceTableSnapshot | null;
     } | null> {
-      const resource = await store.getResourceBySlug(slug);
+      const resource = await store.getResourceByIdentifier(resourceIdentifier);
       if (!resource) return null;
       if (!resource.currentVersionId) return { resource, currentVersion: null, table: null };
 
@@ -235,12 +277,17 @@ export function buildResourceService(input: { store: ResourceStore; blobs: Resou
     },
 
     async uploadCsvAsNewVersion(inputVersion: {
-      slug: string;
+      resourceIdentifier: string;
       csvText: string;
       actor: Actor;
     }): Promise<{ resource: Resource; version: ResourceVersion }> {
-      const resource = await store.getResourceBySlug(inputVersion.slug);
-      if (!resource) throw new Error("Resource not found");
+      const resource = await resolveResource(inputVersion.resourceIdentifier);
+      const csvBytes = Buffer.byteLength(inputVersion.csvText, "utf8");
+      if (csvBytes > maxCsvBytes) {
+        throw new CsvValidationError(
+          `CSV exceeds max size (${csvBytes} bytes > ${maxCsvBytes} bytes). Reduce file size and retry.`
+        );
+      }
 
       const parsed = parseCsvTextToTable(inputVersion.csvText);
       const table: ResourceTableSnapshot = {
@@ -257,24 +304,23 @@ export function buildResourceService(input: { store: ResourceStore; blobs: Resou
         rawCsvText: inputVersion.csvText
       });
 
-      const refreshed = await store.getResourceBySlug(inputVersion.slug);
+      const refreshed = await store.getResourceByIdentifier(resource.id);
       if (!refreshed) throw new Error("Resource not found after version creation");
       return { resource: refreshed, version };
     },
 
-    async listResourceVersions(slug: string): Promise<{ resource: Resource; versions: ResourceVersion[] }> {
-      const resource = await store.getResourceBySlug(slug);
-      if (!resource) throw new Error("Resource not found");
+    async listResourceVersions(resourceIdentifier: string): Promise<{ resource: Resource; versions: ResourceVersion[] }> {
+      const resource = await resolveResource(resourceIdentifier);
       const versions = await store.listVersions(resource.id, 200);
       return { resource, versions };
     },
 
-    async getResourceVersion(slug: string, versionId: string): Promise<{
+    async getResourceVersion(resourceIdentifier: string, versionId: string): Promise<{
       resource: Resource;
       version: ResourceVersion;
       table: ResourceTableSnapshot;
     } | null> {
-      const resource = await store.getResourceBySlug(slug);
+      const resource = await store.getResourceByIdentifier(resourceIdentifier);
       if (!resource) return null;
 
       const version = await store.getVersionById(resource.id, versionId);
@@ -284,12 +330,12 @@ export function buildResourceService(input: { store: ResourceStore; blobs: Resou
       return { resource, version, table };
     },
 
-    async restoreVersion(inputRestore: { slug: string; versionId: string; actor: Actor }): Promise<{
+    async restoreVersion(inputRestore: { resourceIdentifier: string; versionId: string; actor: Actor }): Promise<{
       resource: Resource;
       version: ResourceVersion;
     }> {
       const snapshot = await (async () => {
-        const resource = await store.getResourceBySlug(inputRestore.slug);
+        const resource = await store.getResourceByIdentifier(inputRestore.resourceIdentifier);
         if (!resource) return null;
         const version = await store.getVersionById(resource.id, inputRestore.versionId);
         if (!version) return null;
@@ -309,20 +355,19 @@ export function buildResourceService(input: { store: ResourceStore; blobs: Resou
         basedOnVersionId: snapshot.version.id
       });
 
-      const refreshed = await store.getResourceBySlug(inputRestore.slug);
+      const refreshed = await store.getResourceByIdentifier(snapshot.resource.id);
       if (!refreshed) throw new Error("Resource not found after restore");
       return { resource: refreshed, version };
     },
 
     async saveEditedData(inputEdit: {
-      slug: string;
+      resourceIdentifier: string;
       headers: string[];
       rows: Array<Record<string, ResourceRowValue>>;
       actor: Actor;
       basedOnVersionId?: string;
     }): Promise<{ resource: Resource; version: ResourceVersion }> {
-      const resource = await store.getResourceBySlug(inputEdit.slug);
-      if (!resource) throw new Error("Resource not found");
+      const resource = await resolveResource(inputEdit.resourceIdentifier);
 
       const normalizedRows = normalizeTableRowsFromPatch({
         headers: inputEdit.headers,
@@ -341,18 +386,17 @@ export function buildResourceService(input: { store: ResourceStore; blobs: Resou
         basedOnVersionId: inputEdit.basedOnVersionId ?? resource.currentVersionId
       });
 
-      const refreshed = await store.getResourceBySlug(inputEdit.slug);
+      const refreshed = await store.getResourceByIdentifier(resource.id);
       if (!refreshed) throw new Error("Resource not found after edit save");
       return { resource: refreshed, version };
     },
 
     async setCurrentVersion(inputCurrent: {
-      slug: string;
+      resourceIdentifier: string;
       versionId: string;
       actor: Actor;
     }): Promise<Resource> {
-      const resource = await store.getResourceBySlug(inputCurrent.slug);
-      if (!resource) throw new Error("Resource not found");
+      const resource = await resolveResource(inputCurrent.resourceIdentifier);
 
       const version = await store.getVersionById(resource.id, inputCurrent.versionId);
       if (!version) throw new Error("Resource version not found");
@@ -363,9 +407,57 @@ export function buildResourceService(input: { store: ResourceStore; blobs: Resou
         updatedBy: inputCurrent.actor
       });
 
-      const refreshed = await store.getResourceBySlug(inputCurrent.slug);
+      const refreshed = await store.getResourceByIdentifier(resource.id);
       if (!refreshed) throw new Error("Resource not found after current version update");
       return refreshed;
+    },
+
+    async previewResourceRows(inputPreview: {
+      resourceIdentifier: string;
+      limit?: number;
+      offset?: number;
+      versionId?: string;
+    }): Promise<{
+      resource: Resource;
+      version: ResourceVersion | null;
+      columns: ResourceColumn[];
+      rows: ResourceRow[];
+      rowCount: number;
+      limit: number;
+      offset: number;
+    }> {
+      const resource = await resolveResource(inputPreview.resourceIdentifier);
+      const limit = Math.max(1, Math.min(1000, inputPreview.limit ?? 100));
+      const offset = Math.max(0, inputPreview.offset ?? 0);
+      const resolvedVersionId = inputPreview.versionId ?? resource.currentVersionId;
+      if (!resolvedVersionId) {
+        return {
+          resource,
+          version: null,
+          columns: [],
+          rows: [],
+          rowCount: 0,
+          limit,
+          offset
+        };
+      }
+
+      const version = await store.getVersionById(resource.id, resolvedVersionId);
+      if (!version) throw new Error("Resource version not found");
+      const table = await readTableFromVersion(version);
+      const rowCount = table.rows.length;
+      const start = Math.min(offset, rowCount);
+      const end = Math.min(start + limit, rowCount);
+
+      return {
+        resource,
+        version,
+        columns: table.columns,
+        rows: table.rows.slice(start, end),
+        rowCount,
+        limit,
+        offset
+      };
     }
   };
 }

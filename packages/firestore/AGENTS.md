@@ -36,15 +36,17 @@ Must not live here:
   - `runs/{runId}/logs/{logId}` (append-only run log entries)
   - `datasets/{datasetId}`
   - `dataset_versions/{datasetId}/versions/{versionId}` (versionId is `v000001`, `v000002`, ...)
-  - `resources/{resourceSlug}`
-  - `resource_versions/{resourceSlug}/versions/{versionId}` (resource versions are immutable snapshots)
+  - `resources/{resourceId}` (`slug` is unique and can be used as an identifier)
+  - `resource_versions/{resourceId}/versions/{versionId}` (resource versions are immutable snapshots)
   - `runLeases/{runId}` (lease lock; worker should use this)
 
 Dataset versioning contract:
 - `datasets/{datasetId}.nextVersionNumber` is incremented to reserve the next version.
 - `datasets/{datasetId}.latestVersionId` points to the latest `dataset_versions/.../versions/{versionId}` doc.
-- `resources/{resourceSlug}.nextVersionNumber` is incremented to reserve the next resource version.
-- `resources/{resourceSlug}.currentVersionId` points to the active resource snapshot in `resource_versions/.../versions/{versionId}`.
+- `resources/{resourceId}.nextVersionNumber` is incremented to reserve the next resource version.
+- `resources/{resourceId}.currentVersionId` points to the active resource snapshot in `resource_versions/.../versions/{versionId}`.
+- DAL lookup supports both document id and `slug` (`getResourceByIdentifier`) to keep legacy data accessible.
+- Resource creation enforces slug uniqueness (doc id and indexed `slug` query check).
 
 ## Security Notes (Secrets, Authz)
 - No secrets in repo. Cloud Run should use workload identity / ADC.

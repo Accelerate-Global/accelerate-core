@@ -5,8 +5,8 @@ import type {
   Resource,
   ResourceColumn,
   ResourceRow,
-  ResourceVersion,
-  ResourceRowValue
+  ResourceRowValue,
+  ResourceVersion
 } from "@accelerate-core/shared";
 
 export type ResourceTableSnapshot = {
@@ -64,7 +64,7 @@ export async function uploadCsvVersion(idToken: string, slug: string, csvText: s
   resource: Resource;
   version: ResourceVersion;
 }> {
-  const res = await authFetch(`/api/resources/${encodeURIComponent(slug)}/versions`, idToken, {
+  const res = await authFetch(`/api/resources/${encodeURIComponent(slug)}/upload`, idToken, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ csvText, fileName })
@@ -72,11 +72,81 @@ export async function uploadCsvVersion(idToken: string, slug: string, csvText: s
   return parseJson(res);
 }
 
+export async function uploadCsvVersionFromFile(input: {
+  idToken: string;
+  slug: string;
+  file: File;
+  onProgress?: (percent: number) => void;
+}): Promise<{ resource: Resource; version: ResourceVersion }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/resources/${encodeURIComponent(input.slug)}/upload`);
+    xhr.setRequestHeader("authorization", `Bearer ${input.idToken}`);
+    xhr.responseType = "json";
+
+    xhr.upload.onprogress = (event) => {
+      if (!input.onProgress || !event.lengthComputable || event.total <= 0) return;
+      const percent = Math.max(0, Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      input.onProgress(percent);
+    };
+
+    xhr.onerror = () => {
+      reject(new Error("Network error while uploading CSV"));
+    };
+
+    xhr.onload = () => {
+      const raw = xhr.response ?? {};
+      const body = typeof raw === "object" && raw ? (raw as Record<string, unknown>) : {};
+      if (xhr.status < 200 || xhr.status >= 300) {
+        const message = typeof body.error === "string" ? body.error : `Upload failed: ${xhr.status}`;
+        reject(new Error(message));
+        return;
+      }
+
+      if (!body.resource || !body.version) {
+        reject(new Error("Upload succeeded but response was malformed"));
+        return;
+      }
+
+      resolve(body as { resource: Resource; version: ResourceVersion });
+    };
+
+    const formData = new FormData();
+    formData.append("file", input.file, input.file.name);
+    xhr.send(formData);
+  });
+}
+
 export async function listResourceVersions(idToken: string, slug: string): Promise<{
   resource: Resource;
   versions: ResourceVersion[];
 }> {
   const res = await authFetch(`/api/resources/${encodeURIComponent(slug)}/versions`, idToken, { method: "GET" });
+  return parseJson(res);
+}
+
+export async function getResourcePreview(input: {
+  idToken: string;
+  slug: string;
+  limit?: number;
+  offset?: number;
+  versionId?: string;
+}): Promise<{
+  resource: Resource;
+  version: ResourceVersion | null;
+  columns: ResourceColumn[];
+  rows: ResourceRow[];
+  rowCount: number;
+  limit: number;
+  offset: number;
+}> {
+  const query = new URLSearchParams();
+  if (typeof input.limit === "number") query.set("limit", String(input.limit));
+  if (typeof input.offset === "number") query.set("offset", String(input.offset));
+  if (input.versionId) query.set("versionId", input.versionId);
+
+  const path = `/api/resources/${encodeURIComponent(input.slug)}/preview${query.size ? `?${query}` : ""}`;
+  const res = await authFetch(path, input.idToken, { method: "GET" });
   return parseJson(res);
 }
 

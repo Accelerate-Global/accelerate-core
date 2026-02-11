@@ -49,13 +49,19 @@ HTTP endpoints (V1):
 - `POST /exports` -> `501` (stub)
 - `GET /resources` -> `{ resources }`
 - `POST /resources` (CreateResourceRequest: `{ slug, name, description? }`) -> `{ resource }`
-- `GET /resources/:slug` -> `{ resource, currentVersion, table }`
-- `POST /resources/:slug/versions` (UploadResourceVersionRequest: `{ csvText, fileName? }`) -> `{ resource, version }`
-- `GET /resources/:slug/versions` -> `{ resource, versions }`
-- `GET /resources/:slug/versions/:versionId` -> `{ resource, version, table }`
-- `POST /resources/:slug/versions/:versionId/restore` -> `{ resource, version }` (restore as new version)
-- `PATCH /resources/:slug/current` (PatchResourceCurrentVersionRequest: `{ versionId }`) -> `{ resource }`
-- `PATCH /resources/:slug/data` (PatchResourceDataRequest: `{ columns, rows, basedOnVersionId? }`) -> `{ resource, version }` (edits saved as new version)
+- `GET /resources/:resourceId` -> `{ resource, currentVersion, table }` (`resourceId` can be doc id or slug)
+- `POST /resources/:resourceId/upload` (UploadResourceVersionRequest: `{ csvText, fileName? }`) -> `{ resource, version }`
+- `GET /resources/:resourceId/preview?limit&offset&versionId` -> `{ resource, version, columns, rows, rowCount, limit, offset }`
+- `GET /resources/:resourceId/versions` -> `{ resource, versions }`
+- `GET /resources/:resourceId/versions/:versionId` -> `{ resource, version, table }`
+- `POST /resources/:resourceId/versions/:versionId/restore` -> `{ resource, version }` (restore as new version)
+- `PATCH /resources/:resourceId/current` (PatchResourceCurrentVersionRequest: `{ versionId }`) -> `{ resource }`
+- `PATCH /resources/:resourceId/data` (PatchResourceDataRequest: `{ columns, rows, basedOnVersionId? }`) -> `{ resource, version }` (edits saved as new version)
+- `POST /resources/:resourceId/versions` remains as an upload alias for backward compatibility
+
+Resource upload/preview behavior:
+- Upload validates CSV and enforces max upload size (`RESOURCE_CSV_MAX_BYTES`, default `5_000_000`).
+- Preview reads canonical table JSON from GCS with in-memory TTL cache (`RESOURCE_TABLE_CACHE_*`) and supports `limit/offset` pagination.
 
 Worker kickoff:
 - `POST /runs` best-effort triggers worker via `WORKER_BASE_URL` using Cloud Run IAM.
