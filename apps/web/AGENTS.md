@@ -18,6 +18,7 @@ Must not live here:
 - Build: `pnpm --filter @accelerate-core/web run build`
 - Typecheck: `pnpm --filter @accelerate-core/web run typecheck`
 - Lint: `pnpm --filter @accelerate-core/web run lint`
+- Test: `pnpm --filter @accelerate-core/web run test`
 
 Runtime config:
 - Firebase client config is provided via `NEXT_PUBLIC_FIREBASE_*`.
@@ -38,7 +39,7 @@ Runtime config:
 - `apps/web/src/app/api/runs/[runId]/route.ts` (proxy to API `/runs/:id`)
 - `apps/web/src/app/api/runs/[runId]/cancel/route.ts` (proxy to API `/runs/:id/cancel`)
 - `apps/web/src/app/api/runs/[runId]/logs/route.ts` (proxy to API `/runs/:id/logs`)
-- `apps/web/src/app/api/runs/[runId]/raw/route.ts` (proxy to API `/runs/:id/raw`)
+- `apps/web/src/app/api/runs/[runId]/raw/route.ts` (converts API NDJSON artifact stream to CSV download)
 - `apps/web/src/lib/firebase/client.ts` (Firebase client placeholder)
 - `apps/web/src/lib/auth/AuthProvider.tsx` (Auth wiring placeholder)
 - `apps/web/src/lib/auth/AuthControls.tsx` (Google sign-in/out UI)
@@ -59,7 +60,7 @@ API proxy routes (server-side):
 - `/api/runs/[runId]` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id`
 - `/api/runs/[runId]/cancel` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id/cancel`
 - `/api/runs/[runId]/logs` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id/logs` (returns `{ logs }`)
-- `/api/runs/[runId]/raw` forwards to `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id/raw` (streams NDJSON download)
+- `/api/runs/[runId]/raw` fetches `${API_BASE_URL || NEXT_PUBLIC_API_BASE_URL}/runs/:id/raw`, converts NDJSON to CSV, and streams `text/csv` download
 - Requests forward `Authorization: Bearer <Firebase ID token>` from the browser to the API.
 
 Admin allowlist (V1 internal-only):

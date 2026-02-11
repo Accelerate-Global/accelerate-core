@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { buildCsvDownloadResponse } from "./download-csv";
 
 function getApiBaseUrl(): string {
   const baseUrl = process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -11,25 +12,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ runId: stri
   if (!auth) return NextResponse.json({ error: "Missing Authorization header" }, { status: 401 });
 
   const { runId } = await ctx.params;
-
-  const res = await fetch(`${getApiBaseUrl()}/runs/${encodeURIComponent(runId)}/raw`, {
-    method: "GET",
-    headers: {
-      authorization: auth
-    }
+  const response = await buildCsvDownloadResponse({
+    runId,
+    auth,
+    apiBaseUrl: getApiBaseUrl()
   });
 
-  if (!res.ok) {
-    const data = await res.json().catch(async () => ({ error: await res.text() }));
-    return NextResponse.json(data, { status: res.status });
-  }
-
-  const headers = new Headers();
-  const contentType = res.headers.get("content-type");
-  if (contentType) headers.set("content-type", contentType);
-  const contentDisposition = res.headers.get("content-disposition");
-  if (contentDisposition) headers.set("content-disposition", contentDisposition);
-
-  return new NextResponse(res.body, { status: 200, headers });
+  return new NextResponse(response.body, {
+    status: response.status,
+    headers: response.headers
+  });
 }
-

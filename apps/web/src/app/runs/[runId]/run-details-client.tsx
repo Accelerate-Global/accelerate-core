@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Run, RunLogEntry } from "@accelerate-core/shared";
 import { useAuth } from "../../../lib/auth/AuthProvider";
@@ -9,7 +9,7 @@ type State =
   | { status: "idle" }
   | { status: "loading" }
   | { status: "error"; message: string }
-  | { status: "ready"; run: Run; rows?: Array<Record<string, unknown>>; rowsError?: string };
+  | { status: "ready"; run: Run };
 
 function oneLine(s: string): string {
   return s.replace(/\s+/g, " ").trim();
@@ -35,27 +35,6 @@ async function fetchRun(runId: string, idToken: string): Promise<Run> {
   }
 
   return json as Run;
-}
-
-async function fetchPreviewRows(input: { datasetId: string; versionId?: string; limit?: number }, idToken: string) {
-  const res = await fetch(`/api/query`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${idToken}`
-    },
-    body: JSON.stringify(input)
-  });
-
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const message = typeof json?.error === "string" ? json.error : `Request failed: ${res.status}`;
-    throw new Error(message);
-  }
-
-  const rows = json?.rows;
-  if (!Array.isArray(rows)) throw new Error("Invalid response");
-  return rows as Array<Record<string, unknown>>;
 }
 
 async function fetchRunLogs(input: { runId: string; afterTsMs?: number; limit?: number }, idToken: string) {
@@ -88,6 +67,10 @@ function formatLogLine(e: RunLogEntry): string {
   return `[${hh}] ${lvl} ${e.message}`;
 }
 
+function isNearBottom(el: HTMLElement, thresholdPx = 24): boolean {
+  return el.scrollHeight - (el.scrollTop + el.clientHeight) <= thresholdPx;
+}
+
 export function RunDetailsClient({ runId, onRunUpdate }: { runId: string; onRunUpdate?: (run: Run) => void }) {
   const { user, ready } = useAuth();
   const [state, setState] = useState<State>({ status: "idle" });
@@ -95,10 +78,10 @@ export function RunDetailsClient({ runId, onRunUpdate }: { runId: string; onRunU
   const [logsError, setLogsError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busy, setBusy] = useState<null | "cancel" | "download">(null);
-  const [followLogs, setFollowLogs] = useState(true);
+  const [workerLogsPinned, setWorkerLogsPinned] = useState(true);
   const cursorRef = useRef<number>(0);
-  const apiLogRef = useRef<HTMLPreElement | null>(null);
   const workerLogRef = useRef<HTMLPreElement | null>(null);
+  const workerAutoFollowRef = useRef(true);
 
   const canLoad = useMemo(() => ready && !!user, [ready, user]);
 
@@ -145,6 +128,8 @@ export function RunDetailsClient({ runId, onRunUpdate }: { runId: string; onRunU
     setLogsError(null);
     setActionError(null);
     setBusy(null);
+    setWorkerLogsPinned(true);
+    workerAutoFollowRef.current = true;
     cursorRef.current = 0;
     void loadOnce();
     void loadLogsOnce();
@@ -167,14 +152,27 @@ export function RunDetailsClient({ runId, onRunUpdate }: { runId: string; onRunU
     };
   }, [canLoad, onRunUpdate, runId, user]);
 
+  const onWorkerLogScroll = useCallback(() => {
+    const workerEl = workerLogRef.current;
+    if (!workerEl) return;
+    const shouldFollow = isNearBottom(workerEl);
+    workerAutoFollowRef.current = shouldFollow;
+    setWorkerLogsPinned(shouldFollow);
+  }, []);
+
+  const jumpWorkerLogsToLatest = useCallback(() => {
+    const workerEl = workerLogRef.current;
+    if (!workerEl) return;
+    workerEl.scrollTop = workerEl.scrollHeight;
+    workerAutoFollowRef.current = true;
+    setWorkerLogsPinned(true);
+  }, []);
+
   useEffect(() => {
-    if (!followLogs) return;
-    // Scroll log panes to bottom when new logs arrive.
-    const apiEl = apiLogRef.current;
-    if (apiEl) apiEl.scrollTop = apiEl.scrollHeight;
+    if (!workerAutoFollowRef.current) return;
     const workerEl = workerLogRef.current;
     if (workerEl) workerEl.scrollTop = workerEl.scrollHeight;
-  }, [followLogs, logs.length]);
+  }, [logs.length]);
 
   if (!ready) return <p className="muted">Auth loading...</p>;
   if (!user) return <p className="muted">Sign in to view run details.</p>;
@@ -233,7 +231,7 @@ export function RunDetailsClient({ runId, onRunUpdate }: { runId: string; onRunU
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${run.datasetId}-${run.id}.ndjson`;
+      a.download = `${run.datasetId}-${run.id}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -245,23 +243,6 @@ export function RunDetailsClient({ runId, onRunUpdate }: { runId: string; onRunU
     }
   };
 
-  const onPreview = async () => {
-    try {
-      const token = await user.getIdToken();
-      const rows = await fetchPreviewRows(
-        { datasetId: run.datasetId, versionId: run.outputs?.datasetVersionId, limit: 100 },
-        token
-      );
-      setState((prev) => (prev.status === "ready" ? { ...prev, rows, rowsError: undefined } : prev));
-    } catch (err) {
-      setState((prev) =>
-        prev.status === "ready"
-          ? { ...prev, rows: undefined, rowsError: err instanceof Error ? err.message : "Preview failed" }
-          : prev
-      );
-    }
-  };
-
   const apiLogs = logs.filter((e) => e.source === "api");
   const workerLogs = logs.filter((e) => e.source === "worker");
   const apiLogsText = apiLogs.map(formatLogLine).join("\n");
@@ -269,11 +250,20 @@ export function RunDetailsClient({ runId, onRunUpdate }: { runId: string; onRunU
 
   return (
     <div style={{ marginTop: 12 }}>
-      <div className="pill">
-        Status: <code>{run.status}</code>
-      </div>
-      <div style={{ marginTop: 10 }} className="muted">
-        Run ID: <code>{run.id}</code>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
+        <div>
+          <div className="pill">
+            Status: <code>{run.status}</code>
+          </div>
+          <div style={{ marginTop: 10 }} className="muted">
+            Run ID: <code>{run.id}</code>
+          </div>
+        </div>
+        {run.outputs?.gcsRawNdjsonPath ? (
+          <button className="btn btnPrimary" type="button" onClick={onDownloadRaw} disabled={busy !== null}>
+            {busy === "download" ? "Downloading..." : "Download CSV"}
+          </button>
+        ) : null}
       </div>
       <div style={{ marginTop: 10 }} className="muted">
         Created by: {run.createdBy?.email ?? "unknown"}
@@ -301,8 +291,14 @@ export function RunDetailsClient({ runId, onRunUpdate }: { runId: string; onRunU
       ) : null}
       {run.outputs?.gcsRawNdjsonPath ? (
         <div style={{ marginTop: 10 }} className="muted">
-          Raw artifact: <code>{run.outputs.gcsRawNdjsonPath}</code>
+          Raw artifact: available
         </div>
+      ) : null}
+      {run.outputs?.gcsRawNdjsonPath ? (
+        <details style={{ marginTop: 8 }}>
+          <summary className="muted">Advanced: storage path</summary>
+          <pre className="logBlock">{run.outputs.gcsRawNdjsonPath}</pre>
+        </details>
       ) : null}
       {run.error?.message ? (
         <details className="errorDetails" style={{ marginTop: 10 }}>
@@ -313,24 +309,13 @@ export function RunDetailsClient({ runId, onRunUpdate }: { runId: string; onRunU
         </details>
       ) : null}
 
-      <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-        {run.status === "queued" || run.status === "running" ? (
+      {run.status === "queued" || run.status === "running" ? (
+        <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <button className="btn" type="button" onClick={onCancel} disabled={busy !== null}>
             {busy === "cancel" ? "Stopping..." : "Stop run"}
           </button>
-        ) : null}
-        <button className="btn" type="button" onClick={onPreview} disabled={run.status !== "succeeded" || busy !== null}>
-          Preview rows (limit 100)
-        </button>
-        {run.outputs?.gcsRawNdjsonPath ? (
-          <button className="btn" type="button" onClick={onDownloadRaw} disabled={busy !== null}>
-            {busy === "download" ? "Downloading..." : "Download raw artifact"}
-          </button>
-        ) : null}
-        <button className="btn" type="button" onClick={() => setFollowLogs((v) => !v)} disabled={busy !== null}>
-          {followLogs ? "Following logs" : "Follow logs"}
-        </button>
-      </div>
+        </div>
+      ) : null}
 
       {actionError ? (
         <details className="errorDetails" style={{ marginTop: 10 }}>
@@ -342,11 +327,19 @@ export function RunDetailsClient({ runId, onRunUpdate }: { runId: string; onRunU
       ) : null}
 
       <div style={{ marginTop: 14 }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
-          <h3 style={{ margin: 0 }}>Logs</h3>
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <h3 style={{ margin: 0 }}>Worker logs</h3>
           <span className="muted">
-            Updates while <code>queued</code>/<code>running</code>. (Run id: <code>{run.id}</code>)
+            Auto-updates while <code>queued</code>/<code>running</code>.
           </span>
+          {!workerLogsPinned && workerLogs.length > 0 ? (
+            <>
+              <span className="muted">Paused follow while you read older lines.</span>
+              <button className="btn" type="button" onClick={jumpWorkerLogsToLatest}>
+                Jump to latest
+              </button>
+            </>
+          ) : null}
         </div>
 
         {logsError ? (
@@ -358,64 +351,17 @@ export function RunDetailsClient({ runId, onRunUpdate }: { runId: string; onRunU
           </details>
         ) : null}
 
-        <div className="logGrid" style={{ marginTop: 10 }}>
-          <div className="card">
-            <div className="muted" style={{ marginBottom: 8 }}>
-              API logs
-            </div>
-            <pre ref={apiLogRef} className="logBlock">
-              {apiLogsText || "(no API log entries yet)"}
-            </pre>
-          </div>
-          <div className="card">
-            <div className="muted" style={{ marginBottom: 8 }}>
-              Worker logs
-            </div>
-            <pre ref={workerLogRef} className="logBlock">
-              {workerLogsText || "(no worker log entries yet)"}
-            </pre>
-          </div>
-        </div>
-      </div>
+        <pre ref={workerLogRef} className="logBlock" style={{ marginTop: 10, maxHeight: 360 }} onScroll={onWorkerLogScroll}>
+          {workerLogsText || "(no worker log entries yet)"}
+        </pre>
 
-      {state.rowsError ? (
-        <details className="errorDetails" style={{ marginTop: 10 }}>
+        <details style={{ marginTop: 12 }}>
           <summary className="muted">
-            Preview error: <code>{truncate(oneLine(state.rowsError), 200)}</code>
+            API events (<code>{apiLogs.length}</code>)
           </summary>
-          <pre className="logBlock">{state.rowsError}</pre>
+          <pre className="logBlock">{apiLogsText || "(no API events yet)"}</pre>
         </details>
-      ) : null}
-
-      {state.rows && state.rows.length > 0 ? (
-        <div style={{ marginTop: 14 }}>
-          <div className="muted" style={{ marginBottom: 8 }}>
-            Preview ({state.rows.length} rows)
-          </div>
-          <div style={{ overflowX: "auto" }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  {Object.keys(state.rows[0] ?? {}).map((k) => (
-                    <th key={k}>{k}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {state.rows.map((row, idx) => (
-                  <tr key={idx}>
-                    {Object.keys(state.rows![0] ?? {}).map((k) => (
-                      <td key={k}>
-                        <code>{typeof row[k] === "string" ? row[k] : JSON.stringify(row[k])}</code>
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : null}
+      </div>
     </div>
   );
 }
