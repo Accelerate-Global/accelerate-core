@@ -60,6 +60,13 @@ To run a single package:
 - Connector secrets must be provided via env vars at deploy time (example: `JOSHUA_PROJECT_API_KEY`).
 
 ## Deploy Flow (Mandatory)
+- For every code change session, complete this sequence before handoff:
+  - Run relevant tests/checks for touched packages.
+  - Commit code to a feature branch and open a PR.
+  - Merge PR to `main`.
+  - Return local repo to `main`.
+  - Clean up merged branches (local + remote).
+  - Redeploy Firebase App Hosting.
 - After every merged PR, immediately redeploy the web app on Firebase App Hosting.
 - Command:
   - `firebase apphosting:rollouts:create accelerate-core --project accelerate-global-473318 --git-branch main --force`
