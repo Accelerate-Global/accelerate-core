@@ -1,0 +1,88 @@
+name: Deploy Web App Hosting
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-web-apphosting-production
+  cancel-in-progress: true
+
+env:
+  PROJECT_ID: accelerate-global-473318
+  BACKEND_ID: accelerate-core
+  REGION: us-east4
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Firebase CLI
+        run: npm install --global firebase-tools@latest
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install --yes jq
+
+      - name: Log deployment metadata
+        run: |
+          echo "project=${PROJECT_ID}"
+          echo "backend=${BACKEND_ID}"
+          echo "region=${REGION}"
+          echo "sha=${GITHUB_SHA}"
+          echo "actor=${GITHUB_ACTOR}"
+
+      - name: Verify App Hosting auto-rollouts are disabled
+        run: |
+          set -euo pipefail
+          token="$(gcloud auth print-access-token)"
+          traffic_url="https://firebaseapphosting.googleapis.com/v1beta/projects/${PROJECT_ID}/locations/${REGION}/backends/${BACKEND_ID}/traffic"
+          disabled="$(curl --fail --silent --show-error -H "Authorization: Bearer ${token}" "${traffic_url}" | jq -r '.rolloutPolicy.disabled // false')"
+          if [ "${disabled}" != "true" ]; then
+            echo "rolloutPolicy.disabled=${disabled}. Refusing deploy to prevent duplicate trigger paths."
+            exit 1
+          fi
+
+      - name: Deploy commit to App Hosting
+        run: |
+          set -euo pipefail
+          firebase apphosting:rollouts:create "${BACKEND_ID}" \
+            --project "${PROJECT_ID}" \
+            --git-commit "${GITHUB_SHA}" \
+            --force
+
+      - name: Output rollout evidence for this commit
+        run: |
+          set -euo pipefail
+          token="$(gcloud auth print-access-token)"
+          builds_url="https://firebaseapphosting.googleapis.com/v1beta/projects/${PROJECT_ID}/locations/${REGION}/backends/${BACKEND_ID}/builds?pageSize=50&fields=builds(name,createTime,state,labels,source/codebase/hash)"
+          curl --fail --silent --show-error -H "Authorization: Bearer ${token}" "${builds_url}" \
+            | jq -r --arg sha "${GITHUB_SHA}" '.builds[] | select(.source.codebase.hash == $sha) | [.createTime, .name, .state, (.labels["deployment-tool"] // "-")] | @tsv'
