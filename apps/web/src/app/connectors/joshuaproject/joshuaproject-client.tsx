@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import type { Run } from "@accelerate-core/shared";
@@ -64,7 +64,7 @@ export function JoshuaProjectClient() {
     );
   }, [runsState]);
 
-  const selectRun = (id: string | null, opts?: { updateUrl?: boolean }) => {
+  const selectRun = useCallback((id: string | null, opts?: { updateUrl?: boolean }) => {
     setSelectedRunId(id);
     try {
       if (id) window.localStorage.setItem("ag.jp.selectedRunId", id);
@@ -79,7 +79,16 @@ export function JoshuaProjectClient() {
     else next.delete("run");
     const qs = next.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname);
-  };
+  }, [pathname, router, searchParams]);
+
+  const handleRunUpdate = useCallback((nextRun: Run) => {
+    setRunsState((prev) => {
+      if (prev.status !== "ready") return prev;
+      const exists = prev.runs.some((r) => r.id === nextRun.id);
+      const runs = exists ? prev.runs.map((r) => (r.id === nextRun.id ? nextRun : r)) : [nextRun, ...prev.runs];
+      return { ...prev, runs };
+    });
+  }, []);
 
   const load = async () => {
     if (!user) return;
@@ -205,14 +214,7 @@ export function JoshuaProjectClient() {
           <h3 style={{ marginTop: 0 }}>Run details</h3>
           <RunDetailsClient
             runId={selectedRunId}
-            onRunUpdate={(nextRun) => {
-              setRunsState((prev) => {
-                if (prev.status !== "ready") return prev;
-                const exists = prev.runs.some((r) => r.id === nextRun.id);
-                const runs = exists ? prev.runs.map((r) => (r.id === nextRun.id ? nextRun : r)) : [nextRun, ...prev.runs];
-                return { ...prev, runs };
-              });
-            }}
+            onRunUpdate={handleRunUpdate}
           />
         </div>
       ) : null}
