@@ -1,8 +1,13 @@
-import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-export function middleware() {
-  // Phase 2: create the Supabase middleware client here and add auth/session checks.
-  return NextResponse.next();
+import { createClient } from "@/lib/supabase/middleware";
+
+export function middleware(request: NextRequest) {
+  const middlewareClient = createClient(request);
+
+  // Phase 2: call `middlewareClient.supabase.auth.getUser()` here.
+  // Phase 2: add redirect logic here based on the authenticated user.
+  return middlewareClient.getResponse();
 }
 
 export const config = {
