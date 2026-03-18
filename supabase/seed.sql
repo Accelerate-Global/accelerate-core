@@ -1,0 +1,2 @@
+-- Phase 1 placeholder seed file.
+-- Add local development seed data in a future phase.
