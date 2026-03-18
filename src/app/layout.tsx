@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
 import "@/app/globals.css";
+import "@/lib/env";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -14,14 +15,14 @@ export const metadata: Metadata = {
   description: "Dataset-centric analytics platform",
 };
 
-type RootLayoutProps = Readonly<{
+interface RootLayoutProps {
   children: React.ReactNode;
-}>;
+}
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
-      <body className={inter.variable}>{children}</body>
+      <body className={`${inter.variable} min-h-screen`}>{children}</body>
     </html>
   );
 }
