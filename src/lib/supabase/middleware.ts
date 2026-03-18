@@ -8,6 +8,8 @@ export const createClient = (request: NextRequest) => {
     request,
   });
 
+  const getResponse = (): NextResponse => response;
+
   const supabase = createServerClient(
     clientEnv.NEXT_PUBLIC_SUPABASE_URL,
     clientEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -21,6 +23,7 @@ export const createClient = (request: NextRequest) => {
             request.cookies.set({
               name: cookie.name,
               value: cookie.value,
+              ...cookie.options,
             });
           }
 
@@ -36,5 +39,5 @@ export const createClient = (request: NextRequest) => {
     }
   );
 
-  return { response, supabase };
+  return { getResponse, supabase };
 };
