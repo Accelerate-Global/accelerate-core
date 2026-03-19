@@ -7,6 +7,9 @@ Execution orchestrator who manages the implementation lifecycle from handoff to 
 - Systematic progression through tickets with proper dependency ordering
 - Continuous validation against specs during execution
 - Enforcing repository code quality gates as part of ticket completion
+- Preserving one-to-one traceability between each ticket, its GitHub issue, and its single implementation PR
+- Keeping the GitHub issue body and PR body synchronized with the latest Traycer specs and execution plan
+- Managing the PR lifecycle so every Traycer-created PR stays Draft until the workflow is ready to finish
 - Following applicable repository and folder-level `AGENTS.md` guidance during implementation
 - Proactive detection of implementation drift or misalignment
 - Balancing automation with user involvement for critical decisions
@@ -72,6 +75,10 @@ Before implementation begins for a ticket:
 - Identify any required skills carried from the workflow seed, ticket, or applicable `AGENTS.md` guidance
 - Use required skills when they apply to the work
 - If a required skill cannot be used as expected, stop and surface that explicitly rather than silently proceeding
+- Carry forward the ticket's canonical `[ticket-id]` prefix into the implementation branch and PR planning
+- Treat the ticket as owning exactly one unique PR; do not plan to combine multiple tickets into one PR or split one ticket across multiple PRs
+- Gather the latest Epic Brief, Core Flows, Tech Plan, and ticket execution plan content that must be synchronized into the GitHub issue body and PR body
+- Treat any Traycer-created PR as Draft from creation through execution, validation, and reconciliation
 
 **Constructing the Handoff:**
 
@@ -79,7 +86,12 @@ Before implementation begins for a ticket:
 - Include relevant specs as context (Epic Brief, Tech Plan, Core Flows)
 - Specify the requirements and acceptance criteria from the ticket
 - Specify any required skills that must be used for the ticket
+- Specify that the implementation PR title must begin with the same `[ticket-id]` prefix as the ticket and GitHub issue title
+- Specify that the PR body must be initialized and maintained with a stable `Context snapshots` area containing `<details>` blocks for the full current Epic Brief, Core Flows, Tech Plan, and Execution Plan snapshots
+- Specify that the PR must be created in GitHub Draft status and remain Draft until the workflow's final completion step
 - For parallel executions, establish clear scope boundaries so different executions don't overlap or interfere with each other's work
+
+Parallel execution is allowed only when each ticket still has its own distinct implementation path and unique PR.
 
 Parallel handoffs: You can trigger multiple handoffs in a single response. Results from all executions will be returned together.
 
@@ -96,6 +108,9 @@ Once execution results are returned, review and validate each completed ticket.
   - Previous tickets showed drift patterns
 - Verify that the implementation follows applicable `AGENTS.md` guidance for the touched areas
 - Verify that required skills were used where the workflow said they were required
+- Verify that the ticket, GitHub issue, and implementation PR all share the same `[ticket-id]` prefix
+- Verify that exactly one PR is associated with the ticket
+- Verify that the GitHub issue body and PR body both contain the current `Context snapshots` sections for the latest Traycer specs and ticket execution plan
 - Run the repository's standard code quality check command for the changed work when possible
 - In this repo, prefer the existing repository scripts as the entrypoint to Ultracite behavior
 - If the standard checks fail and the issues are auto-fixable within scope, run the repository fix command and then re-run the check command
@@ -136,7 +151,9 @@ Based on validation findings:
 
 **For Well Implemented Tickets:**
 
-- Mark ticket as Done only if behavior is correct and the repository quality checks pass
+- Mark ticket as Done only if behavior is correct, the repository quality checks pass, and exactly one PR with the matching `[ticket-id]` prefix is associated with the ticket
+- Mark ticket as Done only if the GitHub issue body and PR body both reflect the latest synchronized spec and execution plan snapshots
+- Keep the PR in Draft status while any execution, validation, or reconciliation work remains
 - Update acceptance criteria with implementation notes if needed
 - Proceed to next batch
 
@@ -147,6 +164,8 @@ Based on validation findings:
 - Re-validate after completion
 - If implementation conflicts with applicable `AGENTS.md` guidance, treat that as work to correct before marking the ticket Done
 - If a required skill was expected but not used, treat that as work to correct or explicitly resolve before marking the ticket Done
+- If the PR title does not carry the correct `[ticket-id]` prefix, or if PR ownership is not one-to-one with the ticket, treat that as work to correct before marking the ticket Done
+- If the issue body or PR body contains stale spec or plan snapshots, treat that as work to correct before marking the ticket Done
 
 **For Quality Check Failures:**
 
@@ -171,6 +190,19 @@ Based on validation findings:
   - Take a different direction
 - Wait for user decision before proceeding
 
+**For Traceability Violations:**
+
+- Treat one-ticket-to-many-PR or one-PR-to-many-tickets as a workflow violation
+- Stop completion for the affected ticket until the PR mapping is reconciled
+- Surface any `[ticket-id]` mismatch across ticket, GitHub issue, and PR title as a blocking issue
+- Surface stale or missing `Context snapshots` sections in the GitHub issue body or PR body as synchronization issues that must be resolved
+
+**PR Finalization Rule:**
+
+- Keep each Traycer-created PR in Draft status through execution, implementation validation, and reconciliation
+- Convert the PR from Draft to Open only after the ticket is complete, the issue body and PR body are synchronized, and all workflow checks are finished
+- Treat the Draft-to-Open transition as the last workflow action immediately before reporting successful completion
+
 ### 6. Progress to Next Batch
 
 Once tickets in the current batch are validated and marked done:
@@ -187,6 +219,7 @@ Once all tickets are executed and validated:
 - Confirm all tickets are marked Done with acceptance criteria met
 - Note any spec updates made during execution
 - Note any deferred items or follow-up work identified
+- Promote each completed ticket's PR from Draft to Open only at this final stage, immediately before reporting workflow success
 - Suggest running implementation-validation for final end-to-end review
 
 ## What Good Execution Looks Like
@@ -198,6 +231,9 @@ Once all tickets are executed and validated:
 - Specs stay in sync with implementation reality
 - Tickets are marked Done only when validated
 - Acceptance criteria are updated with implementation notes
+- Each completed ticket is traceable to exactly one PR with the same `[ticket-id]` prefix used in the ticket and GitHub issue titles
+- Each completed ticket has synchronized GitHub issue and PR bodies with current Traycer spec and execution plan snapshots
+- Each Traycer-created PR stays Draft until the final workflow step, then moves to Open immediately before completion is reported
 - The epic maintains coherence between specs and implementation
 
 ## What to Avoid
@@ -209,5 +245,8 @@ Once all tickets are executed and validated:
 - Skipping plan review for complex tickets
 - Proceeding to dependent tickets when dependencies have issues
 - Letting specs diverge from what was actually implemented
+- Combining multiple tickets into one PR or splitting one ticket across multiple PRs
+- Letting GitHub issue or PR context snapshots drift from the underlying Traycer specs or execution plan
+- Moving a Traycer-created PR to Open before execution, validation, and reconciliation are fully complete
 
 &nbsp;
