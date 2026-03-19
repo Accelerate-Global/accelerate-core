@@ -1,13 +1,30 @@
-import type { NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
+import { routes } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/middleware";
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const middlewareClient = createClient(request);
+  const {
+    data: { user },
+  } = await middlewareClient.supabase.auth.getUser();
+  const response = middlewareClient.getResponse();
+  const { pathname } = request.nextUrl;
+  const isAppRoute =
+    pathname === routes.appHome || pathname.startsWith(`${routes.appHome}/`);
 
-  // Phase 2: call `middlewareClient.supabase.auth.getUser()` here.
-  // Phase 2: add redirect logic here based on the authenticated user.
-  return middlewareClient.getResponse();
+  if (!user && isAppRoute) {
+    const url = new URL(routes.login, request.url);
+    const redirectResponse = NextResponse.redirect(url);
+
+    for (const { name, value, ...options } of response.cookies.getAll()) {
+      redirectResponse.cookies.set(name, value, options);
+    }
+
+    return redirectResponse;
+  }
+
+  return response;
 }
 
 export const config = {
