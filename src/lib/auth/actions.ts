@@ -54,7 +54,7 @@ export const signInWithMagicLink = async (
 
   const emailAddress = parsedEmailAddress.data.toLowerCase();
   const redirectUrl = new URL(
-    routes.login,
+    routes.authCallback,
     clientEnv.NEXT_PUBLIC_APP_URL
   ).toString();
   const supabase = await createClient();

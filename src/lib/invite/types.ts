@@ -35,6 +35,21 @@ export type CreateInviteResult =
       message: string;
     };
 
+export type AcceptInviteResult =
+  | {
+      status: "success";
+      email: string;
+    }
+  | {
+      status: "error";
+      message: string;
+    };
+
+export type ValidatedInvite = Pick<
+  Invite,
+  "id" | "email" | "app_role" | "accepted_at" | "revoked_at" | "expires_at"
+>;
+
 export type InviteStatus = "Pending" | "Accepted" | "Expired" | "Revoked";
 
 export const deriveInviteStatus = (invite: Invite): InviteStatus => {
