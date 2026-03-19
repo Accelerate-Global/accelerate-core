@@ -4,7 +4,15 @@ import { z } from "zod";
 
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { clientEnv } from "@/lib/env";
-import type { CreateInviteResult, Invite } from "@/lib/invite/types";
+import { routes } from "@/lib/routes";
+import { createAdminClient } from "@/lib/supabase/admin";
+import type {
+  AcceptInviteResult,
+  CreateInviteResult,
+  Invite,
+  ValidatedInvite,
+} from "@/lib/invite/types";
+import { hashToken } from "@/lib/invite/utils";
 import { createClient } from "@/lib/supabase/server";
 
 const INVALID_EMAIL_MESSAGE = "Enter a valid email address.";
@@ -24,17 +32,12 @@ const createInviteSchema = z.object({
   role: z.enum(["user", "admin"]),
 });
 
-const hashToken = async (rawToken: string): Promise<string> => {
-  const encodedToken = new TextEncoder().encode(rawToken);
-  const digest = await crypto.subtle.digest("SHA-256", encodedToken);
-  const digestBytes = new Uint8Array(digest);
-
-  return Array.from(digestBytes)
-    .map((byte) => {
-      return byte.toString(16).padStart(2, "0");
-    })
-    .join("");
-};
+const USER_ALREADY_REGISTERED_ERROR_FRAGMENT = "user already registered";
+const INVALID_INVITE_MESSAGE = "This invite link is not valid.";
+const USED_INVITE_MESSAGE = "This invite has already been used. Sign in instead.";
+const REVOKED_INVITE_MESSAGE = "This invite has been revoked.";
+const EXPIRED_INVITE_MESSAGE =
+  "This invite has expired. Ask your administrator for a new one.";
 
 const isInviteAccepted = (invite: InviteLifecycleRecord): boolean => {
   return invite.accepted_at !== null;
@@ -56,6 +59,96 @@ const isInviteRecyclable = (
     !isInviteAccepted(invite) &&
     (invite.revoked_at !== null || new Date(invite.expires_at) <= now)
   );
+};
+
+const isUserAlreadyRegisteredError = (message: string): boolean => {
+  return message.toLowerCase().includes(USER_ALREADY_REGISTERED_ERROR_FRAGMENT);
+};
+
+export const acceptInvite = async (
+  token: string
+): Promise<AcceptInviteResult> => {
+  try {
+    const inviteTokenHash = await hashToken(token);
+    const adminClient = createAdminClient();
+    const { data: invite, error: inviteError } = await adminClient
+      .from("invites")
+      .select("id, email, app_role, accepted_at, revoked_at, expires_at")
+      .eq("invite_token_hash", inviteTokenHash)
+      .maybeSingle();
+
+    if (inviteError) {
+      throw inviteError;
+    }
+
+    const validatedInvite = invite as ValidatedInvite | null;
+
+    if (!validatedInvite) {
+      return {
+        status: "error",
+        message: INVALID_INVITE_MESSAGE,
+      };
+    }
+
+    if (validatedInvite.accepted_at !== null) {
+      return {
+        status: "error",
+        message: USED_INVITE_MESSAGE,
+      };
+    }
+
+    if (validatedInvite.revoked_at !== null) {
+      return {
+        status: "error",
+        message: REVOKED_INVITE_MESSAGE,
+      };
+    }
+
+    if (new Date(validatedInvite.expires_at) <= new Date()) {
+      return {
+        status: "error",
+        message: EXPIRED_INVITE_MESSAGE,
+      };
+    }
+
+    const { error: createUserError } = await adminClient.auth.admin.createUser({
+      email: validatedInvite.email,
+      email_confirm: true,
+    });
+
+    if (
+      createUserError &&
+      !isUserAlreadyRegisteredError(createUserError.message)
+    ) {
+      throw createUserError;
+    }
+
+    const supabase = await createClient();
+    const { error: signInError } = await supabase.auth.signInWithOtp({
+      email: validatedInvite.email,
+      options: {
+        emailRedirectTo: `${clientEnv.NEXT_PUBLIC_APP_URL}${routes.authCallback}`,
+        shouldCreateUser: false,
+      },
+    });
+
+    if (signInError) {
+      return {
+        status: "error",
+        message: signInError.message || UNEXPECTED_ERROR_MESSAGE,
+      };
+    }
+
+    return {
+      status: "success",
+      email: validatedInvite.email,
+    };
+  } catch {
+    return {
+      status: "error",
+      message: UNEXPECTED_ERROR_MESSAGE,
+    };
+  }
 };
 
 export const createInvite = async (
