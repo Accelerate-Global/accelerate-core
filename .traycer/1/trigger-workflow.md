@@ -27,17 +27,16 @@ If uncertainty remains after initial interview questions, present more interview
 
 1. Determine the workflow seed:
   - Freeform user request
-  - Linear project
-  - Linear issue
-   If the user provides a Linear seed, use the identifier/number as the primary selector and the name only as optional confirmation context.
-2. If seeded from Linear, read the specified project or issue directly and use its content as the starting context for requirement gathering.
+  - GitHub issue
+   If the user provides a GitHub issue seed, use the identifier/number as the primary selector and the name only as optional confirmation context.
+2. If seeded from GitHub, read the specified issue directly and use its content as the starting context for requirement gathering.
   - Do not summarize away the source material before clarification unless doing so is necessary to resolve confusion
-  - Treat the Linear seed as input context, not unquestionable truth
-  - Preserve the seed record for downstream steps so later publishing and reconciliation know whether this workflow was project-seeded or issue-seeded
-3. If seeded from Linear, identify any explicit required skills associated with that project or issue.
+  - Treat the GitHub issue seed as input context, not unquestionable truth
+  - Preserve the seed record for downstream steps so later publishing and reconciliation know which GitHub issue anchors the workflow
+3. If seeded from GitHub, identify any explicit required skills associated with that issue.
   - Cross-check those skills against the repository-level `AGENTS.md` and any more specific folder-level `AGENTS.md` files that apply
   - Treat explicitly required skills as required to use later in the workflow, not as optional suggestions
-  - Preserve the required skill record for downstream planning, execution, validation, and Linear synchronization
+  - Preserve the required skill record for downstream planning, execution, validation, and GitHub synchronization
 4. Use interview questions to resolve ambiguous requirements, fill in missing details, challenge assumptions, and reach alignment. Multiple rounds of clarification are expected.
 5. Once clarified, present a very concise summary of the agreed requirements, including the workflow seed and any explicit required skills when they exist. Then suggest proceeding with the workflow's next commands.
   Note: This step is for REQUIREMENT GATHERING only. It is a readonly step in the sense that this doesn't involve creation of any artifacts.
@@ -45,8 +44,8 @@ If uncertainty remains after initial interview questions, present more interview
 ## Acceptance Criteria
 
 - The user's request is turned into precise requirements via structured interviewing - no assumptions.
-- If a Linear seed is provided, the workflow origin is clearly identified as a project or issue for downstream use.
-- If a Linear seed provides explicit required skills, those skills are clearly identified and preserved for downstream use.
+- If a GitHub issue seed is provided, the workflow origin is clearly identified for downstream use.
+- If a GitHub issue seed provides explicit required skills, those skills are clearly identified and preserved for downstream use.
 - The user is satisfied with the requirements.
 
 ## Principles
