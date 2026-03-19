@@ -16,9 +16,23 @@ import {
 import { isRouteActive, routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
-const SidebarNav = () => {
+interface SidebarNavProps {
+  appRole: "user" | "admin";
+}
+
+const SidebarNav = ({ appRole }: SidebarNavProps) => {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const visibleProductNavItems =
+    appRole === "admin"
+      ? productNavItems
+      : productNavItems.filter((item) => item.href !== routes.adminHome);
+  const adminNavItem = visibleProductNavItems.find(
+    (item) => item.href === routes.adminHome
+  );
+  const primaryNavItems = visibleProductNavItems.filter(
+    (item) => item.href !== routes.adminHome
+  );
 
   const renderNavLink = (item: (typeof productNavItems)[number]): ReactNode => {
     const isActive = isRouteActive(pathname, item.href);
@@ -114,18 +128,15 @@ const SidebarNav = () => {
           id="product-navigation"
         >
           <ul className="space-y-1">
-            {productNavItems.map((item, index) => {
-              const isAdminItem = index === productNavItems.length - 1;
-
-              return (
-                <Fragment key={item.href}>
-                  {isAdminItem ? (
-                    <li aria-hidden="true" className="my-3 border-t" />
-                  ) : null}
-                  <li>{renderNavLink(item)}</li>
-                </Fragment>
-              );
+            {primaryNavItems.map((item) => {
+              return <li key={item.href}>{renderNavLink(item)}</li>;
             })}
+            {adminNavItem ? (
+              <Fragment>
+                <li aria-hidden="true" className="my-3 border-t" />
+                <li>{renderNavLink(adminNavItem)}</li>
+              </Fragment>
+            ) : null}
           </ul>
         </nav>
       </aside>

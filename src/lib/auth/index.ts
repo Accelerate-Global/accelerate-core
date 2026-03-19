@@ -58,6 +58,18 @@ export const getCurrentProfile = cache(async (): Promise<Profile | null> => {
   return data;
 });
 
+export const requireCurrentProfile = async (): Promise<Profile> => {
+  await requireUser();
+
+  const profile = await getCurrentProfile();
+
+  if (!profile) {
+    redirect(routes.authSetupIncomplete);
+  }
+
+  return profile;
+};
+
 export const requireAdmin = async (): Promise<Profile | null> => {
   const profile = await getCurrentProfile();
 
