@@ -1,11 +1,16 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { redirect } from "next/navigation";
 
-export default function LoginPage() {
-  return (
-    <PlaceholderPage
-      description="Magic link authentication will let invited users sign in to the platform in Phase 2."
-      title="Login"
-      zone="Public"
-    />
-  );
+import { getCurrentUser } from "@/lib/auth";
+import { routes } from "@/lib/routes";
+
+import { LoginForm } from "./login-form";
+
+export default async function LoginPage() {
+  const user = await getCurrentUser();
+
+  if (user) {
+    redirect(routes.appHome);
+  }
+
+  return <LoginForm />;
 }
