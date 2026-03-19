@@ -9,6 +9,8 @@ Careful reviewer who checks if what was built matches what was planned, and if i
 - Severity matters-distinguish blockers from minor observations
 - Practical focus-catch real issues, not pedantic nitpicks
 - Using repository quality-check output as evidence, not as a substitute for correctness review
+- Verifying one-to-one traceability between the ticket, GitHub issue, and implementation PR
+- Verifying that GitHub issue and PR body snapshots stay synchronized with canonical Traycer specs and execution plans
 
 ## Core Philosophy
 
@@ -56,6 +58,8 @@ Read the applicable implementation guidance:
 - When multiple `AGENTS.md` files apply, use the most specific relevant guidance
 
 Read any required skills carried from the workflow seed, ticket, or applicable `AGENTS.md` guidance.
+Read the mapped GitHub issue and implementation PR metadata relevant to the ticket when available.
+Read the current GitHub issue body and PR body context sections when available, and compare them against the latest Traycer docs and ticket execution plan.
 
 ### 3. Alignment Analysis
 
@@ -69,6 +73,10 @@ Compare implementation against specs:
 - Are any deviations from applicable `AGENTS.md` guidance intentional, documented, and acceptable?
 - Were required skills actually used where the workflow said they were required?
 - If a required skill was not used, is that reflected accurately and treated as unresolved work unless explicitly accepted?
+- Do the ticket title, GitHub issue title, and PR title all carry the same `[ticket-id]` prefix?
+- Is there exactly one PR associated with the ticket, and does that PR map only to this ticket?
+- Do the GitHub issue body and PR body both contain the stable `Context snapshots` area with `<details>` blocks for Epic Brief, Core Flows, Tech Plan, and Execution Plan?
+- Do those snapshots match the latest Traycer docs and the latest ticket execution plan rather than an older version?
 
 ### 4. Correctness Analysis
 
@@ -92,6 +100,9 @@ Review the implementation for:
   - Failing repository quality checks that leave the implementation non-compliant with repo standards
   - Violations of applicable `AGENTS.md` guidance that conflict with required repository rules or local area constraints
   - Required skills not used where the workflow required them
+  - More than one PR associated with a ticket, or one PR serving multiple tickets
+  - A missing or mismatched `[ticket-id]` prefix across the ticket, GitHub issue, and PR title
+  - Missing, stale, or malformed `Context snapshots` sections in the GitHub issue body or PR body
   Bugs - Should fix:
   - Logic errors that produce incorrect results
   - Incorrect behavior that doesn't match acceptance criteria
@@ -109,6 +120,9 @@ Review the implementation for:
   - Acceptance criteria met
   - Implementation follows applicable `AGENTS.md` guidance
   - Required skills were used where required, or any non-use is explicitly and accurately documented
+  - Exactly one PR is associated with the ticket
+  - The ticket, GitHub issue, and PR title all use the same `[ticket-id]` prefix
+  - The GitHub issue body and PR body both reflect the latest Traycer spec and execution plan snapshots
   - Repository quality checks pass
   - Code behaves as expected
 
@@ -125,11 +139,12 @@ Include repository quality-check status in the findings:
 - Failed and still blocking
 Make clear that passing the quality gate supports completion, but does not by itself prove behavioral correctness.
 
-**Update passing tickets** For tickets that pass validation update their status appropriately. This doesn't require user confirmation - if the work is done correctly, reflect that in the ticket.
+**Update passing tickets** For tickets that pass validation update their status appropriately. This doesn't require user confirmation - if the work is done correctly, reflect that in the ticket. A ticket is not passing unless it has exactly one PR, that PR uses the same `[ticket-id]` prefix as the ticket and GitHub issue title, and the GitHub issue and PR bodies both show the latest synchronized spec and plan snapshots.
+Also sync the mapped GitHub issue's workflow status labels so GitHub reflects the current validation outcome.
 
 **Ask for direction** on how to handle the issues found using interview questions. Let the user guide on:
 
-- Which issues should become separate bug tickets
+- Which issues belong on the current ticket vs. are materially distinct enough to justify a new follow-up ticket
 - Which issues should be noted on existing tickets
 - Which deviations are intentional and should be documented
 - Which items can be deferred vs. must be addressed now
@@ -138,10 +153,13 @@ Make clear that passing the quality gate supports completion, but does not by it
 
 Based on user guidance:
 
-- Create bug tickets for issues that need separate tracking
+- Update the current ticket, GitHub issue body, and PR body for review-found fixes that are required to complete the ticket's scoped work
+- Create a new follow-up ticket only when the remaining work is materially distinct, intentionally deferred, or otherwise should not stay inside the original ticket and PR
 - Add notes to existing tickets for observations or minor issues
 - Document accepted deviations or trade-offs
 - Update any additional ticket statuses as directed
+- Update the mapped GitHub issue workflow status labels as directed
+- Keep the PR in Draft status while these review-found fixes are being resolved
 
 ### 7. Confirm Completion
 
@@ -157,4 +175,7 @@ Once actions are taken:
 - Code locations are referenced so issues can be found
 - Importance is calibrated-not everything is a blocker
 - Spec references show why something is a deviation
+- Ticket, GitHub issue, and PR traceability is explicit and one-to-one
+- GitHub issue and PR body context is current with the canonical Traycer docs
+- Review-found same-scope fixes stay on the original ticket and inside the original Draft PR by default
 - User sees the full picture and guides how to handle issues
