@@ -4,8 +4,6 @@ import { z } from "zod";
 
 import { getCurrentUser, requireAdmin } from "@/lib/auth";
 import { clientEnv } from "@/lib/env";
-import { routes } from "@/lib/routes";
-import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   AcceptInviteResult,
   CreateInviteResult,
@@ -13,6 +11,8 @@ import type {
   ValidatedInvite,
 } from "@/lib/invite/types";
 import { hashToken } from "@/lib/invite/utils";
+import { routes } from "@/lib/routes";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const INVALID_EMAIL_MESSAGE = "Enter a valid email address.";
@@ -34,7 +34,8 @@ const createInviteSchema = z.object({
 
 const USER_ALREADY_REGISTERED_ERROR_FRAGMENT = "user already registered";
 const INVALID_INVITE_MESSAGE = "This invite link is not valid.";
-const USED_INVITE_MESSAGE = "This invite has already been used. Sign in instead.";
+const USED_INVITE_MESSAGE =
+  "This invite has already been used. Sign in instead.";
 const REVOKED_INVITE_MESSAGE = "This invite has been revoked.";
 const EXPIRED_INVITE_MESSAGE =
   "This invite has expired. Ask your administrator for a new one.";
@@ -124,10 +125,14 @@ export const acceptInvite = async (
     }
 
     const supabase = await createClient();
+    const redirectUrl = new URL(
+      routes.authCallback,
+      clientEnv.NEXT_PUBLIC_APP_URL
+    ).toString();
     const { error: signInError } = await supabase.auth.signInWithOtp({
       email: validatedInvite.email,
       options: {
-        emailRedirectTo: `${clientEnv.NEXT_PUBLIC_APP_URL}${routes.authCallback}`,
+        emailRedirectTo: redirectUrl,
         shouldCreateUser: false,
       },
     });
