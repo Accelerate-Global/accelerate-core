@@ -1,5 +1,6 @@
 "use server";
 
+import type { AuthError } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -12,26 +13,40 @@ export interface MagicLinkActionResult {
   status: "success" | "error";
 }
 
-const UNKNOWN_EMAIL_ERROR_FRAGMENTS = [
-  "signups not allowed",
-  "signup is disabled",
-  "user not found",
-  "email not found",
-  "no user found",
-] as const;
-
 const DEFAULT_ERROR_MESSAGE =
   "We couldn’t send a magic link right now. Please try again.";
 const INVALID_EMAIL_MESSAGE = "Enter a valid email address.";
+const MAGIC_LINK_OPERATIONAL_ERROR_CODES = new Set<string>([
+  "email_provider_disabled",
+  "hook_payload_invalid_content_type",
+  "hook_payload_over_size_limit",
+  "hook_timeout",
+  "hook_timeout_after_retry",
+  "otp_disabled",
+  "over_email_send_rate_limit",
+  "over_request_rate_limit",
+  "request_timeout",
+  "unexpected_failure",
+]);
+const MASKED_MAGIC_LINK_ERROR_CODES = new Set<string>([
+  "signup_disabled",
+  "user_not_found",
+]);
 
 const emailAddressSchema = z.string().trim().email(INVALID_EMAIL_MESSAGE);
 
-const isUnknownEmailError = (message: string): boolean => {
-  const normalizedMessage = message.toLowerCase();
+const isOperationalMagicLinkError = (error: AuthError): boolean => {
+  const { code, status } = error;
 
-  return UNKNOWN_EMAIL_ERROR_FRAGMENTS.some((fragment) => {
-    return normalizedMessage.includes(fragment);
-  });
+  if (status === undefined || status === 0 || status === 429 || status >= 500) {
+    return true;
+  }
+
+  if (!code || MASKED_MAGIC_LINK_ERROR_CODES.has(code)) {
+    return false;
+  }
+
+  return MAGIC_LINK_OPERATIONAL_ERROR_CODES.has(code);
 };
 
 const getSuccessMessage = (emailAddress: string): string => {
@@ -66,7 +81,14 @@ export const signInWithMagicLink = async (
     },
   });
 
-  if (!error || isUnknownEmailError(error.message)) {
+  if (!error) {
+    return {
+      status: "success",
+      message: getSuccessMessage(emailAddress),
+    };
+  }
+
+  if (!isOperationalMagicLinkError(error)) {
     return {
       status: "success",
       message: getSuccessMessage(emailAddress),

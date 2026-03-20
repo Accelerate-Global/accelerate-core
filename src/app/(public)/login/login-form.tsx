@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, LoaderCircle, Mail, TriangleAlert } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,8 +13,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { signInWithMagicLink } from "@/lib/auth/actions";
-import { routes } from "@/lib/routes";
-import { createClient } from "@/lib/supabase/client";
 
 type FormPhase = "idle" | "loading" | "success" | "error";
 
@@ -22,43 +20,10 @@ const DEFAULT_ERROR_MESSAGE =
   "We couldn’t send a magic link right now. Please try again.";
 
 export const LoginForm = () => {
-  const [supabase] = useState(() => createClient());
   const [emailAddress, setEmailAddress] = useState("");
   const [phase, setPhase] = useState<FormPhase>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    const redirectToApp = (): void => {
-      window.location.replace(routes.appHome);
-    };
-
-    const syncSession = async (): Promise<void> => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (session) {
-        redirectToApp();
-      }
-    };
-
-    syncSession().catch(() => {
-      return undefined;
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        redirectToApp();
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
 
   const handleSubmit = async (
     event: React.FormEvent<HTMLFormElement>
