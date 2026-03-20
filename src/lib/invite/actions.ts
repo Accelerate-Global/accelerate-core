@@ -24,7 +24,7 @@ const PENDING_INVITE_MESSAGE =
 
 type InviteLifecycleRecord = Pick<
   Invite,
-  "id" | "accepted_at" | "revoked_at" | "expires_at"
+  "id" | "accepted_at" | "revoked_at" | "expires_at" | "invite_token_hash"
 >;
 
 const createInviteSchema = z.object({
@@ -194,7 +194,7 @@ export const createInvite = async (
 
     const { data: inviteHistory, error: inviteHistoryError } = await supabase
       .from("invites")
-      .select("id, accepted_at, revoked_at, expires_at")
+      .select("id, accepted_at, revoked_at, expires_at, invite_token_hash")
       .eq("email", normalizedEmailAddress)
       .order("created_at", { ascending: false });
 
@@ -208,9 +208,9 @@ export const createInvite = async (
     const hasPendingInvite = inviteRecords.some((invite) => {
       return isInvitePending(invite, now);
     });
-    const recyclableInviteId = inviteRecords.find((invite) => {
+    const recyclableInvite = inviteRecords.find((invite) => {
       return isInviteRecyclable(invite, now);
-    })?.id;
+    });
     const hasCompletedAccess =
       existingProfile !== null && (hasAcceptedInvite || !hasInviteHistory);
 
@@ -234,8 +234,8 @@ export const createInvite = async (
     const currentUser = await getCurrentUser();
     const invitedBy = currentUser?.id ?? adminProfile.id;
 
-    if (recyclableInviteId) {
-      const { error: updateInviteError } = await supabase
+    if (recyclableInvite) {
+      const { data: updatedInvite, error: updateInviteError } = await supabase
         .from("invites")
         .update({
           invite_token_hash: inviteTokenHash,
@@ -245,10 +245,20 @@ export const createInvite = async (
           created_at: nowIso,
           revoked_at: null,
         })
-        .eq("id", recyclableInviteId);
+        .eq("id", recyclableInvite.id)
+        .eq("invite_token_hash", recyclableInvite.invite_token_hash)
+        .select("id")
+        .maybeSingle();
 
       if (updateInviteError) {
         throw updateInviteError;
+      }
+
+      if (updatedInvite === null) {
+        return {
+          status: "error",
+          message: PENDING_INVITE_MESSAGE,
+        };
       }
     } else {
       const { error: insertInviteError } = await supabase
@@ -262,13 +272,23 @@ export const createInvite = async (
         });
 
       if (insertInviteError) {
+        if (insertInviteError.code === "23505") {
+          return {
+            status: "error",
+            message: PENDING_INVITE_MESSAGE,
+          };
+        }
+
         throw insertInviteError;
       }
     }
 
     return {
       status: "success",
-      inviteUrl: `${clientEnv.NEXT_PUBLIC_APP_URL}/invite/${rawToken}`,
+      inviteUrl: new URL(
+        `/invite/${rawToken}`,
+        clientEnv.NEXT_PUBLIC_APP_URL
+      ).toString(),
     };
   } catch {
     return {
