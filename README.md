@@ -24,3 +24,5 @@ This repo includes Phase 1 Supabase CLI scaffolding in `supabase/config.toml`.
 - Run `supabase stop` to stop the local stack.
 - Run `supabase migration new <name>` to add the first schema migration in a later phase.
 - Run `supabase db reset` to apply migrations and `supabase/seed.sql` during local development.
+- `supabase/seed.sql` creates a local development admin user at `admin@example.com`.
+- Run `node scripts/bootstrap-admin.mjs <email>` with `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set to promote the first hosted admin user.
