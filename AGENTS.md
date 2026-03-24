@@ -121,3 +121,20 @@ Biome's linter will catch most issues automatically. Focus your attention on:
 ---
 
 Most formatting and common issues are automatically fixed by Biome. Run `npm exec -- ultracite fix` before committing to ensure compliance.
+
+---
+
+## Vercel CLI Notes
+
+- Prefer running Vercel CLI commands through a local npm cache to avoid the machine-global cache permission issue:
+  - `npm_config_cache=.tmp/npm-cache npx vercel@latest <command>`
+- The repo is linked to the Vercel project `accelerate-global/accelerate-core`.
+- Prefer read-only inspection commands first:
+  - `whoami`
+  - `list`
+  - `inspect <deployment-url> --logs`
+  - `env ls <environment>`
+- Avoid overwriting local app config with `vercel pull` into `.env.local`.
+  - Prefer `vercel pull --environment=<env> --git-branch=<branch>` only when you intentionally want Vercel-managed envs written into `.vercel/.env.*.local`.
+  - Keep the hand-maintained local `.env.local` for local development values.
+- If local and Vercel values need comparison, inspect the existing `.env.local` first, then use `env ls` or `pull` into `.vercel/` instead of replacing the root env file.

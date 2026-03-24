@@ -14,9 +14,7 @@ const publicEnvShape = {
 
 export const clientEnvSchema = z.object(publicEnvShape);
 
-export const serverEnvSchema = clientEnvSchema.extend({
-  SUPABASE_SERVICE_ROLE_KEY: requiredString("SUPABASE_SERVICE_ROLE_KEY"),
-});
+export const serverEnvSchema = clientEnvSchema;
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -24,6 +22,7 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 const appUrlSchema = requiredString("NEXT_PUBLIC_APP_URL").url(
   "NEXT_PUBLIC_APP_URL must be a valid URL."
 );
+const serviceRoleKeySchema = requiredString("SUPABASE_SERVICE_ROLE_KEY");
 
 const formatEnvError = (
   runtime: "client" | "server",
@@ -104,14 +103,7 @@ export const getServerEnv = (): ServerEnv => {
     throw new Error("Server environment variables are not available here.");
   }
 
-  cachedServerEnv ??= parseEnv(
-    serverEnvSchema,
-    {
-      ...getClientEnvValues(),
-      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    },
-    "server"
-  );
+  cachedServerEnv ??= parseEnv(serverEnvSchema, getClientEnvValues(), "server");
 
   return cachedServerEnv;
 };
@@ -124,6 +116,10 @@ export const getAppUrl = (): string => {
   );
 
   return cachedAppUrl;
+};
+
+export const getSupabaseServiceRoleKey = (): string => {
+  return serviceRoleKeySchema.parse(process.env.SUPABASE_SERVICE_ROLE_KEY);
 };
 
 export const validateEnv = (): void => {
