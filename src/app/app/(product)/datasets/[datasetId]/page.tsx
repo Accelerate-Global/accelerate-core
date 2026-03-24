@@ -1,11 +1,6 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
+import { routes } from "@/lib/routes";
 
 export default function DatasetDetailPage() {
-  return (
-    <PlaceholderPage
-      description="Dataset detail pages will show schema, freshness, and actions for an individual dataset."
-      title="Dataset"
-      zone="Product"
-    />
-  );
+  return <RoutePlaceholder route={routes.datasetDetail} />;
 }

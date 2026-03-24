@@ -1,11 +1,6 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
+import { routes } from "@/lib/routes";
 
 export default function AdminUsersPage() {
-  return (
-    <PlaceholderPage
-      description="Administrators will manage user accounts, lifecycle changes, and membership from this page."
-      title="Users"
-      zone="Admin"
-    />
-  );
+  return <RoutePlaceholder route={routes.adminUsers} />;
 }

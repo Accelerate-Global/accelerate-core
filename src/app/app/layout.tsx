@@ -1,11 +1,7 @@
-import { requireCurrentProfile } from "@/lib/auth";
-
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-export default async function AppLayout({ children }: AppLayoutProps) {
-  await requireCurrentProfile();
-
+export default function AppLayout({ children }: AppLayoutProps) {
   return children;
 }

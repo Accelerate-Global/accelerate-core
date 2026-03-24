@@ -1,11 +1,6 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
+import { routes } from "@/lib/routes";
 
 export default function AdminOverviewPage() {
-  return (
-    <PlaceholderPage
-      description="The admin overview will summarize operational health, access posture, and platform status."
-      title="Overview"
-      zone="Admin"
-    />
-  );
+  return <RoutePlaceholder route={routes.adminHome} />;
 }

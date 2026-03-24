@@ -1,11 +1,6 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
+import { routes } from "@/lib/routes";
 
 export default function AdminPublishingPage() {
-  return (
-    <PlaceholderPage
-      description="Publishing workflows will let administrators control releases and dataset availability."
-      title="Publishing"
-      zone="Admin"
-    />
-  );
+  return <RoutePlaceholder route={routes.adminPublishing} />;
 }

@@ -1,11 +1,6 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
+import { routes } from "@/lib/routes";
 
 export default function AdminDatasetsPage() {
-  return (
-    <PlaceholderPage
-      description="Admins will govern dataset catalog configuration, visibility, and operational metadata here."
-      title="Datasets"
-      zone="Admin"
-    />
-  );
+  return <RoutePlaceholder route={routes.adminDatasets} />;
 }

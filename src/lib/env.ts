@@ -10,9 +10,6 @@ const publicEnvShape = {
   NEXT_PUBLIC_SUPABASE_ANON_KEY: requiredString(
     "NEXT_PUBLIC_SUPABASE_ANON_KEY"
   ),
-  NEXT_PUBLIC_APP_URL: requiredString("NEXT_PUBLIC_APP_URL").url(
-    "NEXT_PUBLIC_APP_URL must be a valid URL."
-  ),
 } as const;
 
 export const clientEnvSchema = z.object(publicEnvShape);
@@ -23,6 +20,10 @@ export const serverEnvSchema = clientEnvSchema.extend({
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
+
+const appUrlSchema = requiredString("NEXT_PUBLIC_APP_URL").url(
+  "NEXT_PUBLIC_APP_URL must be a valid URL."
+);
 
 const formatEnvError = (
   runtime: "client" | "server",
@@ -53,22 +54,85 @@ const parseEnv = <TSchema extends z.ZodType>(
   throw new Error(formatEnvError(runtime, parsedEnv.error));
 };
 
-const clientEnvValues = {
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+const getClientEnvValues = () => {
+  return {
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  };
 };
 
-export const clientEnv = parseEnv(clientEnvSchema, clientEnvValues, "client");
+let cachedClientEnv: ClientEnv | null = null;
+let cachedServerEnv: ServerEnv | null = null;
+let cachedAppUrl: string | null = null;
 
-export const serverEnv =
-  typeof window === "undefined"
-    ? parseEnv(
-        serverEnvSchema,
-        {
-          ...clientEnvValues,
-          SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-        },
-        "server"
-      )
-    : (undefined as unknown as ServerEnv);
+const normalizeAppUrl = (value: string): string => {
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
+
+  return `https://${value}`;
+};
+
+const getVercelAppUrl = (): string | null => {
+  const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  const vercelBranchUrl = process.env.VERCEL_BRANCH_URL?.trim();
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+
+  if (process.env.VERCEL_ENV === "production" && vercelProductionUrl) {
+    return normalizeAppUrl(vercelProductionUrl);
+  }
+
+  if (vercelBranchUrl) {
+    return normalizeAppUrl(vercelBranchUrl);
+  }
+
+  if (vercelUrl) {
+    return normalizeAppUrl(vercelUrl);
+  }
+
+  return null;
+};
+
+export const getClientEnv = (): ClientEnv => {
+  cachedClientEnv ??= parseEnv(clientEnvSchema, getClientEnvValues(), "client");
+
+  return cachedClientEnv;
+};
+
+export const getServerEnv = (): ServerEnv => {
+  if (typeof window !== "undefined") {
+    throw new Error("Server environment variables are not available here.");
+  }
+
+  cachedServerEnv ??= parseEnv(
+    serverEnvSchema,
+    {
+      ...getClientEnvValues(),
+      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    },
+    "server"
+  );
+
+  return cachedServerEnv;
+};
+
+export const getAppUrl = (): string => {
+  cachedAppUrl ??= appUrlSchema.parse(
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+      getVercelAppUrl() ||
+      "http://localhost:3000"
+  );
+
+  return cachedAppUrl;
+};
+
+export const validateEnv = (): void => {
+  if (typeof window === "undefined") {
+    getServerEnv();
+    getAppUrl();
+
+    return;
+  }
+
+  getClientEnv();
+};

@@ -1,11 +1,6 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
+import { routes } from "@/lib/routes";
 
 export default function AdminPermissionsPage() {
-  return (
-    <PlaceholderPage
-      description="Role assignments and dataset access policies will be configured from the permissions console."
-      title="Permissions"
-      zone="Admin"
-    />
-  );
+  return <RoutePlaceholder route={routes.adminPermissions} />;
 }

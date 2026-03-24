@@ -17,7 +17,7 @@ import {
 
 import { type AppRoute, routes } from "@/lib/routes";
 
-interface ShellNavItem {
+export interface ShellNavItem {
   href: AppRoute;
   icon: LucideIcon;
   label: string;

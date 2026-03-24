@@ -1,9 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
-import { clientEnv } from "@/lib/env";
+import { getClientEnv } from "@/lib/env";
 
-export const createClient = (request: NextRequest) => {
+export const createMiddlewareSupabaseClient = (request: NextRequest) => {
+  const env = getClientEnv();
   let response = NextResponse.next({
     request,
   });
@@ -11,8 +12,8 @@ export const createClient = (request: NextRequest) => {
   const getResponse = (): NextResponse => response;
 
   const supabase = createServerClient(
-    clientEnv.NEXT_PUBLIC_SUPABASE_URL,
-    clientEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
@@ -41,3 +42,5 @@ export const createClient = (request: NextRequest) => {
 
   return { getResponse, supabase };
 };
+
+export const createClient = createMiddlewareSupabaseClient;
