@@ -1,11 +1,6 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
+import { routes } from "@/lib/routes";
 
 export default function AdminPipelineRunsPage() {
-  return (
-    <PlaceholderPage
-      description="Pipeline run status, diagnostics, and outcomes will be available for admin review here."
-      title="Pipeline Runs"
-      zone="Admin"
-    />
-  );
+  return <RoutePlaceholder route={routes.adminPipelineRuns} />;
 }

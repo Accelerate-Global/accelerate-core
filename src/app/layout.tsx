@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 
 import "@/app/globals.css";
-import "@/lib/env";
+import { getAppUrl, validateEnv } from "@/lib/env";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -11,8 +11,13 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Accelerate",
-  description: "Dataset-centric analytics platform",
+  metadataBase: new URL(getAppUrl()),
+  title: {
+    default: "Accelerate",
+    template: "%s | Accelerate",
+  },
+  description:
+    "Phase 1 foundation for an invite-only, dataset-centric web application.",
 };
 
 interface RootLayoutProps {
@@ -20,6 +25,8 @@ interface RootLayoutProps {
 }
 
 export default function RootLayout({ children }: RootLayoutProps) {
+  validateEnv();
+
   return (
     <html lang="en">
       <body className={`${inter.variable} min-h-screen`}>{children}</body>

@@ -1,11 +1,6 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
+import { routes } from "@/lib/routes";
 
 export default function WorkspacePage() {
-  return (
-    <PlaceholderPage
-      description="Workspace settings and collaboration controls will live here for the core product experience."
-      title="Workspace"
-      zone="Product"
-    />
-  );
+  return <RoutePlaceholder route={routes.workspace} />;
 }

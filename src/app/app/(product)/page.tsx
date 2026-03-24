@@ -1,11 +1,6 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
+import { routes } from "@/lib/routes";
 
 export default function AppHomePage() {
-  return (
-    <PlaceholderPage
-      description="This landing page will surface recent activity, shortcuts, and product guidance for signed-in users."
-      title="Home"
-      zone="Product"
-    />
-  );
+  return <RoutePlaceholder route={routes.appHome} />;
 }

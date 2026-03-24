@@ -3,9 +3,13 @@
 import { ChevronLeft, ChevronRight, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Fragment, type ReactNode, useState } from "react";
+import { type ReactNode, useState } from "react";
 
-import { productNavItems } from "@/components/layout/nav-items";
+import {
+  adminNavItems,
+  productNavItems,
+  type ShellNavItem,
+} from "@/components/layout/nav-items";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -13,38 +17,52 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { isRouteActive, routes } from "@/lib/routes";
+import { type AppRoute, isRouteActive } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 interface SidebarNavProps {
-  appRole: "user" | "admin";
+  backLink?: {
+    href: AppRoute;
+    label: string;
+  };
+  shellDescription: string;
+  shellTitle: string;
+  variant: "admin" | "product";
 }
 
-const SidebarNav = ({ appRole }: SidebarNavProps) => {
+const SidebarNav = ({
+  backLink,
+  shellDescription,
+  shellTitle,
+  variant,
+}: SidebarNavProps) => {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const visibleProductNavItems =
-    appRole === "admin"
-      ? productNavItems
-      : productNavItems.filter((item) => item.href !== routes.adminHome);
-  const adminNavItem = visibleProductNavItems.find(
-    (item) => item.href === routes.adminHome
-  );
-  const primaryNavItems = visibleProductNavItems.filter(
-    (item) => item.href !== routes.adminHome
-  );
+  const isAdminVariant = variant === "admin";
+  const items = isAdminVariant ? adminNavItems : productNavItems;
 
-  const renderNavLink = (item: (typeof productNavItems)[number]): ReactNode => {
+  const renderNavLink = (item: ShellNavItem): ReactNode => {
     const isActive = isRouteActive(pathname, item.href);
+    let stateClasses =
+      "text-muted-foreground hover:bg-accent/60 hover:text-foreground focus-visible:ring-ring";
+
+    if (isAdminVariant && isActive) {
+      stateClasses =
+        "bg-zinc-800 text-zinc-50 focus-visible:ring-zinc-400 focus-visible:ring-offset-zinc-950";
+    } else if (isAdminVariant) {
+      stateClasses =
+        "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-50 focus-visible:ring-zinc-400 focus-visible:ring-offset-zinc-950";
+    } else if (isActive) {
+      stateClasses = "bg-accent text-accent-foreground focus-visible:ring-ring";
+    }
+
     const link = (
       <Link
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "flex items-center rounded-lg font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "flex items-center rounded-lg font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
           isCollapsed ? "h-10 justify-center px-0" : "gap-3 px-3 py-2",
-          isActive
-            ? "bg-accent text-accent-foreground"
-            : "text-muted-foreground hover:bg-accent/60 hover:text-foreground"
+          stateClasses
         )}
         href={item.href}
       >
@@ -75,7 +93,10 @@ const SidebarNav = ({ appRole }: SidebarNavProps) => {
     <TooltipProvider delayDuration={100}>
       <aside
         className={cn(
-          "flex shrink-0 flex-col border-r bg-background transition-[width] duration-200 ease-out",
+          "flex shrink-0 flex-col border-r transition-[width] duration-200 ease-out",
+          isAdminVariant
+            ? "border-zinc-800 bg-zinc-950 text-zinc-50"
+            : "border-r bg-background",
           isCollapsed ? "w-14" : "w-60"
         )}
       >
@@ -87,25 +108,26 @@ const SidebarNav = ({ appRole }: SidebarNavProps) => {
               : "h-[52px] justify-between px-4"
           )}
         >
-          <Link
-            aria-label="Go to app home"
-            className="flex min-w-0 items-center gap-3"
-            href={routes.appHome}
-          >
+          <div className="flex min-w-0 items-center gap-3">
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <LayoutDashboard aria-hidden="true" className="size-4" />
             </div>
             {isCollapsed ? null : (
               <div className="min-w-0">
-                <p className="truncate font-semibold text-sm">Accelerate</p>
-                <p className="truncate text-muted-foreground text-xs">
-                  Product shell
+                <p className="truncate font-semibold text-sm">{shellTitle}</p>
+                <p
+                  className={cn(
+                    "truncate text-xs",
+                    isAdminVariant ? "text-zinc-400" : "text-muted-foreground"
+                  )}
+                >
+                  {shellDescription}
                 </p>
               </div>
             )}
-          </Link>
+          </div>
           <Button
-            aria-controls="product-navigation"
+            aria-controls="shell-navigation"
             aria-expanded={!isCollapsed}
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={() => {
@@ -113,7 +135,7 @@ const SidebarNav = ({ appRole }: SidebarNavProps) => {
             }}
             size="icon"
             type="button"
-            variant="ghost"
+            variant={isAdminVariant ? "secondary" : "ghost"}
           >
             {isCollapsed ? (
               <ChevronRight aria-hidden="true" className="size-4" />
@@ -123,22 +145,25 @@ const SidebarNav = ({ appRole }: SidebarNavProps) => {
           </Button>
         </div>
         <nav
-          aria-label="Product navigation"
+          aria-label="Application navigation"
           className="flex-1 px-2 py-3"
-          id="product-navigation"
+          id="shell-navigation"
         >
           <ul className="space-y-1">
-            {primaryNavItems.map((item) => {
+            {items.map((item) => {
               return <li key={item.href}>{renderNavLink(item)}</li>;
             })}
-            {adminNavItem ? (
-              <Fragment>
-                <li aria-hidden="true" className="my-3 border-t" />
-                <li>{renderNavLink(adminNavItem)}</li>
-              </Fragment>
-            ) : null}
           </ul>
         </nav>
+        {backLink ? (
+          <div className="border-t px-2 py-3">
+            {renderNavLink({
+              href: backLink.href,
+              icon: ChevronLeft,
+              label: backLink.label,
+            })}
+          </div>
+        ) : null}
       </aside>
     </TooltipProvider>
   );

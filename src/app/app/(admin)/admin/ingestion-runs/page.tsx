@@ -1,11 +1,6 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
+import { routes } from "@/lib/routes";
 
 export default function AdminIngestionRunsPage() {
-  return (
-    <PlaceholderPage
-      description="Ingestion run history and troubleshooting details will help admins monitor data intake jobs."
-      title="Ingestion Runs"
-      zone="Admin"
-    />
-  );
+  return <RoutePlaceholder route={routes.adminIngestionRuns} />;
 }
