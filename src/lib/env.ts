@@ -53,10 +53,28 @@ const parseEnv = <TSchema extends z.ZodType>(
   throw new Error(formatEnvError(runtime, parsedEnv.error));
 };
 
+const getFirstDefinedEnvValue = (...values: Array<string | undefined>) => {
+  for (const value of values) {
+    if (value?.trim()) {
+      return value;
+    }
+  }
+
+  return undefined;
+};
+
 const getClientEnvValues = () => {
   return {
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    NEXT_PUBLIC_SUPABASE_URL: getFirstDefinedEnvValue(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_URL
+    ),
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: getFirstDefinedEnvValue(
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+      process.env.SUPABASE_PUBLISHABLE_KEY,
+      process.env.SUPABASE_ANON_KEY
+    ),
   };
 };
 

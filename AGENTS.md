@@ -129,6 +129,8 @@ Most formatting and common issues are automatically fixed by Biome. Run `npm exe
 - Prefer running Vercel CLI commands through a local npm cache to avoid the machine-global cache permission issue:
   - `npm_config_cache=.tmp/npm-cache npx vercel@latest <command>`
 - The repo is linked to the Vercel project `accelerate-global/accelerate-core`.
+- Do not push directly to the protected `preview` branch.
+  - When work needs to land on `preview`, create a feature branch, open a PR targeting `preview`, and merge that PR through GitHub.
 - Prefer read-only inspection commands first:
   - `whoami`
   - `list`
