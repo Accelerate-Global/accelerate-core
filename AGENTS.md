@@ -131,6 +131,7 @@ Most formatting and common issues are automatically fixed by Biome. Run `npm exe
 - The repo is linked to the Vercel project `accelerate-global/accelerate-core`.
 - Do not push directly to the protected `preview` branch.
   - When work needs to land on `preview`, create a feature branch, open a PR targeting `preview`, and merge that PR through GitHub.
+- After a branch is merged successfully, return to the default branch, clean up merged branches locally and remotely, and sync the default branch with origin.
 - Prefer read-only inspection commands first:
   - `whoami`
   - `list`
