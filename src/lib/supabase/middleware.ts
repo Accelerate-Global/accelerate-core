@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { getClientEnv } from "@/lib/env";
+import type { Database } from "@/lib/supabase/database.types";
 
 export const createMiddlewareSupabaseClient = (request: NextRequest) => {
   const env = getClientEnv();
@@ -11,7 +12,7 @@ export const createMiddlewareSupabaseClient = (request: NextRequest) => {
 
   const getResponse = (): NextResponse => response;
 
-  const supabase = createServerClient(
+  const supabase = createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
