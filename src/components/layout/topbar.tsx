@@ -30,7 +30,7 @@ const Topbar = ({ note, variant }: TopbarProps) => {
         variant="outline"
       >
         <Shield aria-hidden="true" className="size-3.5" />
-        Phase 1
+        {variant === "admin" ? "Admin" : "Product"}
       </Badge>
     </header>
   );

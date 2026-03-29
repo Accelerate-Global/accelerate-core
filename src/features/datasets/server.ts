@@ -8,6 +8,7 @@ import {
   normalizeDatasetRow,
   normalizeDatasetVersion,
 } from "@/features/datasets/types";
+import { createServiceRoleSupabaseClient } from "@/lib/supabase/admin";
 import type { Tables } from "@/lib/supabase/database.types";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -102,6 +103,30 @@ export const getReadableDatasetVersionById = async (
     : null;
 };
 
+export const listReadableDatasetVersionsByIds = async (
+  datasetVersionIds: string[]
+): Promise<DatasetVersion[]> => {
+  if (datasetVersionIds.length === 0) {
+    return [];
+  }
+
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("dataset_versions")
+    .select(datasetVersionSelect)
+    .in("id", datasetVersionIds);
+
+  if (error) {
+    throw new Error(
+      toErrorMessage("Failed to list dataset versions", error.message)
+    );
+  }
+
+  return (data as unknown as Tables<"dataset_versions">[]).map(
+    normalizeDatasetVersion
+  );
+};
+
 export const getReadableActiveDatasetVersion = async (
   datasetId: string
 ): Promise<DatasetVersion | null> => {
@@ -133,4 +158,42 @@ export const listReadableDatasetRows = async (
   }
 
   return (data as unknown as Tables<"dataset_rows">[]).map(normalizeDatasetRow);
+};
+
+export const getDatasetRecordByIdAdmin = async (
+  datasetId: string
+): Promise<Tables<"datasets"> | null> => {
+  const supabase = createServiceRoleSupabaseClient();
+  const { data, error } = await supabase
+    .from("datasets")
+    .select(datasetSelect)
+    .eq("id", datasetId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      toErrorMessage("Failed to load dataset by id", error.message)
+    );
+  }
+
+  return data as Tables<"datasets"> | null;
+};
+
+export const getDatasetVersionRecordByIdAdmin = async (
+  datasetVersionId: string
+): Promise<Tables<"dataset_versions"> | null> => {
+  const supabase = createServiceRoleSupabaseClient();
+  const { data, error } = await supabase
+    .from("dataset_versions")
+    .select(datasetVersionSelect)
+    .eq("id", datasetVersionId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      toErrorMessage("Failed to load dataset version by id", error.message)
+    );
+  }
+
+  return data as Tables<"dataset_versions"> | null;
 };

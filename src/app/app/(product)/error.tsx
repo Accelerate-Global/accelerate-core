@@ -10,7 +10,7 @@ interface ProductErrorProps {
 export default function ProductError({ error, reset }: ProductErrorProps) {
   return (
     <ErrorState
-      description="The product view could not finish rendering. You can retry or navigate somewhere else once shared navigation ships."
+      description="The dataset product view could not finish rendering. Retry the page or return to the dataset directory."
       error={error}
       reset={reset}
       title="Product view error"
