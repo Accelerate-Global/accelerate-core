@@ -41,7 +41,7 @@ export const AppShell = ({
           note={
             variant === "admin"
               ? "Admin and operations scaffold. Enforcement lands in Phase 2."
-              : "Product shell scaffold. Authentication lands in Phase 2."
+              : "Shared dataset browser for authenticated product access."
           }
           variant={variant}
         />

@@ -175,6 +175,13 @@ export interface Database {
         };
         Relationships: [
           {
+            foreignKeyName: "datasets_active_version_matches_dataset_fkey";
+            columns: ["id", "active_version_id"];
+            isOneToOne: false;
+            referencedRelation: "dataset_versions";
+            referencedColumns: ["dataset_id", "id"];
+          },
+          {
             foreignKeyName: "datasets_owner_workspace_id_fkey";
             columns: ["owner_workspace_id"];
             isOneToOne: false;
@@ -306,60 +313,177 @@ export interface Database {
         Relationships: [];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      [_ in never]: never;
+    };
     Functions: {
       current_app_role: {
-        Args: Record<PropertyKey, never>;
+        Args: never;
         Returns: Database["public"]["Enums"]["app_role"];
       };
-      is_admin: {
+      is_admin: { Args: { target_user_id?: string }; Returns: boolean };
+      query_dataset_rows: {
         Args: {
-          target_user_id?: string;
+          target_dataset_version_id: string;
+          target_filters?: Json;
+          target_page?: number;
+          target_page_size?: number;
+          target_sorts?: Json;
         };
-        Returns: boolean;
+        Returns: Json;
       };
       user_can_read_dataset: {
-        Args: {
-          target_dataset_id: string;
-          target_user_id?: string;
-        };
+        Args: { target_dataset_id: string; target_user_id?: string };
         Returns: boolean;
       };
       user_can_read_dataset_version: {
-        Args: {
-          target_dataset_version_id: string;
-          target_user_id?: string;
-        };
+        Args: { target_dataset_version_id: string; target_user_id?: string };
         Returns: boolean;
       };
       user_is_workspace_member: {
-        Args: {
-          target_user_id?: string;
-          target_workspace_id: string;
-        };
+        Args: { target_user_id?: string; target_workspace_id: string };
         Returns: boolean;
       };
     };
     Enums: {
-      app_role: "admin" | "user";
-      dataset_visibility: "global" | "private" | "shared" | "workspace";
-      invite_status: "accepted" | "expired" | "pending" | "revoked";
-      workspace_member_role: "admin" | "member" | "owner";
+      app_role: "user" | "admin";
+      dataset_visibility: "global" | "private" | "workspace" | "shared";
+      invite_status: "pending" | "accepted" | "revoked" | "expired";
+      workspace_member_role: "owner" | "admin" | "member";
     };
-    CompositeTypes: Record<string, never>;
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
 }
 
-type PublicSchema = Database["public"];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 
-export type Tables<TableName extends keyof PublicSchema["Tables"]> =
-  PublicSchema["Tables"][TableName]["Row"];
+type DefaultSchema = DatabaseWithoutInternals[Extract<
+  keyof Database,
+  "public"
+>];
 
-export type TablesInsert<TableName extends keyof PublicSchema["Tables"]> =
-  PublicSchema["Tables"][TableName]["Insert"];
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R;
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
+      }
+      ? R
+      : never
+    : never;
 
-export type TablesUpdate<TableName extends keyof PublicSchema["Tables"]> =
-  PublicSchema["Tables"][TableName]["Update"];
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I;
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I;
+      }
+      ? I
+      : never
+    : never;
 
-export type Enums<EnumName extends keyof PublicSchema["Enums"]> =
-  PublicSchema["Enums"][EnumName];
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U;
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U;
+      }
+      ? U
+      : never
+    : never;
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never;
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never;
+
+export const Constants = {
+  public: {
+    Enums: {
+      app_role: ["user", "admin"],
+      dataset_visibility: ["global", "private", "workspace", "shared"],
+      invite_status: ["pending", "accepted", "revoked", "expired"],
+      workspace_member_role: ["owner", "admin", "member"],
+    },
+  },
+} as const;
