@@ -1,8 +1,8 @@
-import { AdminOversightPageView } from "@/features/admin/operations/page";
-import { loadAdminOversightPage } from "@/features/admin/operations/server";
+import { AdminApisPageView } from "@/features/admin/apis/page";
+import { loadAdminApisPage } from "@/features/admin/apis/server";
 
 export default async function AdminApisPage() {
-  const pageData = await loadAdminOversightPage("apis");
+  const pageData = await loadAdminApisPage();
 
-  return <AdminOversightPageView {...pageData} />;
+  return <AdminApisPageView {...pageData} />;
 }

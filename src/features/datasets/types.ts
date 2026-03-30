@@ -63,11 +63,15 @@ export interface Dataset {
 }
 
 export interface DatasetVersion {
+  changeSummary: string | null;
   columnDefinitions: DatasetColumnDefinitions;
   createdAt: string;
   datasetId: string;
   id: string;
   metadata: JsonRecord;
+  notes: string | null;
+  publishedAt: string | null;
+  publishedBy: string | null;
   rowCount: number;
   sourceRef: string | null;
   versionNumber: number;
@@ -86,10 +90,28 @@ export interface DatasetRow {
   createdAt: string;
   datasetVersionId: string;
   id: string;
-  lineage: JsonRecord | null;
+  lineage: DatasetRowProvenance | null;
   pipelineRowId: string;
   rowIndex: number | null;
   updatedAt: string;
+}
+
+export interface DatasetRowLineageReference {
+  datasetVersionId: string | null;
+  pipelineRowId: string;
+  rowId: string | null;
+}
+
+export interface DatasetRowFieldMapping {
+  fieldKey: string;
+  sourceFields: string[];
+}
+
+export interface DatasetRowProvenance {
+  fieldMappings: DatasetRowFieldMapping[];
+  ingestedFrom: string | null;
+  raw: JsonRecord;
+  upstreamRows: DatasetRowLineageReference[];
 }
 
 export interface DatasetWorkspaceReference {
@@ -150,6 +172,7 @@ export const normalizeDatasetVersion = (
   datasetVersion: DatasetVersionRecord
 ): DatasetVersion => {
   return {
+    changeSummary: datasetVersion.change_summary,
     columnDefinitions: normalizeDatasetColumnDefinitions(
       datasetVersion.column_definitions
     ),
@@ -157,6 +180,9 @@ export const normalizeDatasetVersion = (
     datasetId: datasetVersion.dataset_id,
     id: datasetVersion.id,
     metadata: normalizeJsonRecord(datasetVersion.metadata),
+    notes: datasetVersion.notes,
+    publishedAt: datasetVersion.published_at,
+    publishedBy: datasetVersion.published_by,
     rowCount: datasetVersion.row_count,
     sourceRef: datasetVersion.source_ref,
     versionNumber: datasetVersion.version_number,
@@ -175,16 +201,127 @@ export const normalizeDatasetVersionSource = (
   };
 };
 
-const normalizeLineage = (value: Json | null): JsonRecord | null => {
+const getFirstTrimmedString = (
+  value: JsonRecord,
+  keys: readonly string[]
+): string | null => {
+  for (const key of keys) {
+    const candidate = value[key];
+
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return null;
+};
+
+const normalizeLineageReference = (
+  value: Json
+): DatasetRowLineageReference | null => {
+  if (!isJsonRecord(value)) {
+    return null;
+  }
+
+  const pipelineRowId = getFirstTrimmedString(value, [
+    "pipelineRowId",
+    "sourcePipelineRowId",
+  ]);
+
+  if (!pipelineRowId) {
+    return null;
+  }
+
+  return {
+    datasetVersionId: getFirstTrimmedString(value, [
+      "datasetVersionId",
+      "sourceDatasetVersionId",
+    ]),
+    pipelineRowId,
+    rowId: getFirstTrimmedString(value, ["rowId", "sourceRowId"]),
+  };
+};
+
+const normalizeStringArray = (value: Json | undefined): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((entry): entry is string => {
+      return typeof entry === "string" && entry.trim().length > 0;
+    })
+    .map((entry) => entry.trim());
+};
+
+const normalizeFieldMapping = (value: Json): DatasetRowFieldMapping | null => {
+  if (!isJsonRecord(value)) {
+    return null;
+  }
+
+  const fieldKey = getFirstTrimmedString(value, ["fieldKey", "targetField"]);
+
+  if (!fieldKey) {
+    return null;
+  }
+
+  const sourceFields = normalizeStringArray(
+    value.sourceFields ?? value.sources ?? value.sourceColumns
+  );
+
+  return {
+    fieldKey,
+    sourceFields,
+  };
+};
+
+const getFirstLineageArray = (
+  value: JsonRecord,
+  keys: readonly string[]
+): Json[] => {
+  for (const key of keys) {
+    if (Array.isArray(value[key])) {
+      return value[key] as Json[];
+    }
+  }
+
+  return [];
+};
+
+const normalizeLineage = (value: Json | null): DatasetRowProvenance | null => {
   if (value === null) {
     return null;
   }
 
-  if (isJsonRecord(value)) {
-    return value;
+  if (!isJsonRecord(value)) {
+    return {
+      fieldMappings: [],
+      ingestedFrom: null,
+      raw: {},
+      upstreamRows: [],
+    };
   }
 
-  return {};
+  return {
+    fieldMappings: getFirstLineageArray(value, [
+      "fieldMappings",
+      "fieldLineage",
+    ])
+      .map((entry) => normalizeFieldMapping(entry))
+      .filter((entry): entry is DatasetRowFieldMapping => Boolean(entry)),
+    ingestedFrom:
+      typeof value.ingestedFrom === "string" && value.ingestedFrom.trim()
+        ? value.ingestedFrom
+        : null,
+    raw: value,
+    upstreamRows: getFirstLineageArray(value, [
+      "upstreamRows",
+      "sourceRows",
+      "rowReferences",
+    ])
+      .map((entry) => normalizeLineageReference(entry))
+      .filter((entry): entry is DatasetRowLineageReference => Boolean(entry)),
+  };
 };
 
 export const normalizeDatasetRow = (

@@ -1,3 +1,7 @@
+import type {
+  DatasetVersionComparisonSummary,
+  DatasetVersionLineageGraph,
+} from "@/features/datasets/lineage-service";
 import type { Enums } from "@/lib/supabase/database.types";
 
 export const defaultInviteDurationDays = 7;
@@ -77,16 +81,42 @@ export interface AdminDatasetVersionSourceRecord {
 }
 
 export interface AdminDatasetVersionRecord {
+  changeSummary: string | null;
+  comparisonToActive: DatasetVersionComparisonSummary | null;
   createdAt: string;
   datasetId: string;
   id: string;
   isActive: boolean;
   isDerived: boolean;
+  notes: string | null;
+  publishedAt: string | null;
+  publishedByDisplayName: string | null;
+  publishedByEmail: string | null;
   rowCount: number;
   sourceCount: number;
   sourceRef: string | null;
   sources: AdminDatasetVersionSourceRecord[];
   versionNumber: number;
+}
+
+export interface AdminDatasetVersionEventRecord {
+  actorDisplayName: string | null;
+  actorEmail: string | null;
+  createdAt: string;
+  datasetId: string;
+  eventType: string;
+  id: string;
+  metadataSummary: string[];
+  previousVersionId: string | null;
+  previousVersionNumber: number | null;
+  versionId: string;
+  versionNumber: number | null;
+}
+
+export interface AdminPublishingSelectedVersion {
+  lineageGraph: DatasetVersionLineageGraph | null;
+  pipelineContractNotes: string[];
+  version: AdminDatasetVersionRecord;
 }
 
 export interface AdminDatasetUserGrant {

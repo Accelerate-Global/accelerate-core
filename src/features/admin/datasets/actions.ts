@@ -211,7 +211,7 @@ export const setDefaultGlobalDatasetAction = async (
 export const activateDatasetVersionAction = async (
   formData: FormData
 ): Promise<void> => {
-  await requireCurrentUserAdmin();
+  const actingUser = await requireCurrentUserAdmin();
   const datasetId = formData.get("datasetId");
   const datasetVersionId = formData.get("datasetVersionId");
 
@@ -223,6 +223,45 @@ export const activateDatasetVersionAction = async (
     throw new Error("A dataset version id is required.");
   }
 
+  const supabase = createAdminClient();
+  const { error } = await supabase.rpc("activate_dataset_version", {
+    target_actor_user_id: actingUser.id,
+    target_dataset_id: datasetId,
+    target_dataset_version_id: datasetVersionId,
+  });
+
+  if (error) {
+    throw new Error(
+      toErrorMessage("Failed to activate the dataset version", error.message)
+    );
+  }
+
+  revalidateDatasetAdminPaths(datasetId);
+};
+
+export const updateDatasetVersionNotesAction = async (
+  formData: FormData
+): Promise<void> => {
+  await requireCurrentUserAdmin();
+  const datasetId = formData.get("datasetId");
+  const datasetVersionId = formData.get("datasetVersionId");
+  const notes = formData.get("notes");
+  const changeSummary = formData.get("changeSummary");
+
+  if (typeof datasetId !== "string" || !datasetId) {
+    throw new Error("A dataset id is required.");
+  }
+
+  if (typeof datasetVersionId !== "string" || !datasetVersionId) {
+    throw new Error("A dataset version id is required.");
+  }
+
+  const normalizedNotes =
+    typeof notes === "string" && notes.trim() ? notes.trim() : null;
+  const normalizedChangeSummary =
+    typeof changeSummary === "string" && changeSummary.trim()
+      ? changeSummary.trim()
+      : null;
   const supabase = createAdminClient();
   const { data: datasetVersion, error: versionError } = await supabase
     .from("dataset_versions")
@@ -243,16 +282,17 @@ export const activateDatasetVersionAction = async (
   }
 
   const { error: updateError } = await supabase
-    .from("datasets")
+    .from("dataset_versions")
     .update({
-      active_version_id: datasetVersionId,
+      change_summary: normalizedChangeSummary,
+      notes: normalizedNotes,
     })
-    .eq("id", datasetId);
+    .eq("id", datasetVersionId);
 
   if (updateError) {
     throw new Error(
       toErrorMessage(
-        "Failed to activate the dataset version",
+        "Failed to update the dataset version notes",
         updateError.message
       )
     );

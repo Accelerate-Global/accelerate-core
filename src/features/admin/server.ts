@@ -19,10 +19,15 @@ const datasetSelect =
   "id, slug, name, description, visibility, is_default_global, owner_workspace_id, active_version_id, metadata, created_at, updated_at";
 
 const datasetVersionSelect =
-  "id, dataset_id, version_number, row_count, source_ref, created_at";
+  "id, dataset_id, version_number, column_definitions, row_count, source_ref, " +
+  "metadata, notes, change_summary, published_at, published_by, created_at";
 
 const datasetVersionSourceSelect =
   "id, dataset_version_id, source_dataset_version_id, relation_type, created_at";
+
+const datasetVersionEventSelect =
+  "id, dataset_id, dataset_version_id, previous_dataset_version_id, " +
+  "event_type, actor_user_id, metadata, created_at";
 
 const datasetAccessSelect =
   "id, dataset_id, user_id, workspace_id, granted_by, created_at";
@@ -135,7 +140,7 @@ export const listAdminDatasetVersions = async (): Promise<
     );
   }
 
-  return (data ?? []) as Tables<"dataset_versions">[];
+  return (data ?? []) as unknown as Tables<"dataset_versions">[];
 };
 
 export const listAdminDatasetAccess = async (): Promise<
@@ -172,6 +177,24 @@ export const listAdminDatasetVersionSources = async (): Promise<
   }
 
   return (data ?? []) as Tables<"dataset_version_sources">[];
+};
+
+export const listAdminDatasetVersionEvents = async (): Promise<
+  Tables<"dataset_version_events">[]
+> => {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("dataset_version_events")
+    .select(datasetVersionEventSelect)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(
+      toErrorMessage("Failed to load dataset version events", error.message)
+    );
+  }
+
+  return (data ?? []) as unknown as Tables<"dataset_version_events">[];
 };
 
 export const listAdminAuthUsers = async (): Promise<AuthUsersResult> => {

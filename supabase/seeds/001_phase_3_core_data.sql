@@ -223,7 +223,11 @@ insert into public.dataset_versions (
   column_definitions,
   row_count,
   source_ref,
-  metadata
+  metadata,
+  notes,
+  change_summary,
+  published_at,
+  published_by
 )
 values
   (
@@ -256,7 +260,11 @@ values
     }'::jsonb,
     2,
     'seed/global.csv',
-    '{"seedCategory":"global"}'::jsonb
+    '{"seedCategory":"global"}'::jsonb,
+    'Initial global catalog seed.',
+    'Bootstrapped the default global dataset for early browsing.',
+    '2026-03-05T09:00:00+00'::timestamptz,
+    '11111111-1111-4111-8111-111111111111'
   ),
   (
     '30000000-0000-4000-8000-000000000002',
@@ -288,7 +296,11 @@ values
     }'::jsonb,
     2,
     'seed/workspace-a.csv',
-    '{"seedCategory":"workspace"}'::jsonb
+    '{"seedCategory":"workspace"}'::jsonb,
+    'Workspace A starter portfolio snapshot.',
+    'Captured the first workspace-owned account slice.',
+    '2026-03-06T09:00:00+00'::timestamptz,
+    '11111111-1111-4111-8111-111111111111'
   ),
   (
     '30000000-0000-4000-8000-000000000003',
@@ -320,7 +332,11 @@ values
     }'::jsonb,
     1,
     'seed/private.csv',
-    '{"seedCategory":"private"}'::jsonb
+    '{"seedCategory":"private"}'::jsonb,
+    'Private executive contact seed.',
+    'Created the first direct-grant-only dataset.',
+    '2026-03-07T09:00:00+00'::timestamptz,
+    '11111111-1111-4111-8111-111111111111'
   ),
   (
     '30000000-0000-4000-8000-000000000004',
@@ -352,7 +368,11 @@ values
     }'::jsonb,
     2,
     'seed/shared.csv',
-    '{"seedCategory":"shared"}'::jsonb
+    '{"seedCategory":"shared"}'::jsonb,
+    'Shared market reference seed.',
+    'Enabled the first workspace-to-workspace shared dataset.',
+    '2026-03-08T09:00:00+00'::timestamptz,
+    '11111111-1111-4111-8111-111111111111'
   ),
   (
     '30000000-0000-4000-8000-000000000005',
@@ -394,7 +414,67 @@ values
     }'::jsonb,
     2,
     'seed/workspace-a-combined-signals.csv',
-    '{"seedCategory":"merged"}'::jsonb
+    '{"seedCategory":"merged"}'::jsonb,
+    'Initial merged signal rollup.',
+    'Published the first combined view from workspace and shared sources.',
+    '2026-03-09T09:00:00+00'::timestamptz,
+    '11111111-1111-4111-8111-111111111111'
+  ),
+  (
+    '30000000-0000-4000-8000-000000000006',
+    '20000000-0000-4000-8000-000000000005',
+    2,
+    '{
+      "columns": [
+        {
+          "key": "pipeline_row_id",
+          "label": "Row ID",
+          "dataType": "text",
+          "source": "pipeline_row_id",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "system"
+        },
+        {
+          "key": "account_name",
+          "label": "Account",
+          "dataType": "text",
+          "source": "attributes.account_name",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        },
+        {
+          "key": "market_name",
+          "label": "Market",
+          "dataType": "text",
+          "source": "attributes.market_name",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        },
+        {
+          "key": "priority_signal",
+          "label": "Priority signal",
+          "dataType": "text",
+          "source": "attributes.priority_signal",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        }
+      ]
+    }'::jsonb,
+    3,
+    'seed/workspace-a-combined-signals-v2.csv',
+    '{"seedCategory":"merged","supportsRowLineage":true}'::jsonb,
+    'Adds stronger operator notes and row-level upstream references.',
+    'Expanded the merged signal dataset with a priority signal column and one new combined row.',
+    '2026-03-10T11:00:00+00'::timestamptz,
+    '11111111-1111-4111-8111-111111111111'
   );
 
 update public.datasets
@@ -414,7 +494,7 @@ set active_version_id = '30000000-0000-4000-8000-000000000004'
 where id = '20000000-0000-4000-8000-000000000004';
 
 update public.datasets
-set active_version_id = '30000000-0000-4000-8000-000000000005'
+set active_version_id = '30000000-0000-4000-8000-000000000006'
 where id = '20000000-0000-4000-8000-000000000005';
 
 insert into public.dataset_version_sources (
@@ -433,6 +513,18 @@ values
   (
     '60000000-0000-4000-8000-000000000002',
     '30000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000004',
+    'merged_from'
+  ),
+  (
+    '60000000-0000-4000-8000-000000000003',
+    '30000000-0000-4000-8000-000000000006',
+    '30000000-0000-4000-8000-000000000002',
+    'merged_from'
+  ),
+  (
+    '60000000-0000-4000-8000-000000000004',
+    '30000000-0000-4000-8000-000000000006',
     '30000000-0000-4000-8000-000000000004',
     'merged_from'
   );
@@ -517,6 +609,54 @@ values
     2,
     '{"account_name":"Pioneer Logistics","market_name":"DACH","status":"Pilot"}'::jsonb,
     '{"ingestedFrom":"seed/workspace-a-combined-signals.csv"}'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000010',
+    '30000000-0000-4000-8000-000000000006',
+    'combined-1',
+    1,
+    '{"account_name":"Apex Manufacturing","market_name":"Nordics","priority_signal":"Hot"}'::jsonb,
+    '{
+      "ingestedFrom":"seed/workspace-a-combined-signals-v2.csv",
+      "upstreamRows": [
+        {
+          "datasetVersionId": "30000000-0000-4000-8000-000000000002",
+          "pipelineRowId": "workspace-a-1"
+        },
+        {
+          "datasetVersionId": "30000000-0000-4000-8000-000000000004",
+          "pipelineRowId": "shared-1"
+        }
+      ]
+    }'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000011',
+    '30000000-0000-4000-8000-000000000006',
+    'combined-2',
+    2,
+    '{"account_name":"Pioneer Logistics","market_name":"DACH","priority_signal":"Warm"}'::jsonb,
+    '{
+      "ingestedFrom":"seed/workspace-a-combined-signals-v2.csv",
+      "upstreamRows": [
+        {
+          "datasetVersionId": "30000000-0000-4000-8000-000000000002",
+          "pipelineRowId": "workspace-a-2"
+        },
+        {
+          "datasetVersionId": "30000000-0000-4000-8000-000000000004",
+          "pipelineRowId": "shared-2"
+        }
+      ]
+    }'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000012',
+    '30000000-0000-4000-8000-000000000006',
+    'combined-3',
+    3,
+    '{"account_name":"Summit Retail","market_name":"Benelux","priority_signal":"Watch"}'::jsonb,
+    '{"ingestedFrom":"seed/workspace-a-combined-signals-v2.csv"}'::jsonb
   );
 
 insert into public.dataset_access (
@@ -549,6 +689,138 @@ values
     '55555555-5555-4555-8555-555555555555',
     null,
     '11111111-1111-4111-8111-111111111111'
+  );
+
+insert into public.dataset_version_events (
+  id,
+  dataset_id,
+  dataset_version_id,
+  previous_dataset_version_id,
+  event_type,
+  actor_user_id,
+  metadata,
+  created_at
+)
+values
+  (
+    '70000000-0000-4000-8000-000000000001',
+    '20000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000001',
+    null,
+    'published',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-05T09:00:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000002',
+    '20000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000001',
+    null,
+    'activated',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-05T09:05:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000003',
+    '20000000-0000-4000-8000-000000000002',
+    '30000000-0000-4000-8000-000000000002',
+    null,
+    'published',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-06T09:00:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000004',
+    '20000000-0000-4000-8000-000000000002',
+    '30000000-0000-4000-8000-000000000002',
+    null,
+    'activated',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-06T09:05:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000005',
+    '20000000-0000-4000-8000-000000000003',
+    '30000000-0000-4000-8000-000000000003',
+    null,
+    'published',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-07T09:00:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000006',
+    '20000000-0000-4000-8000-000000000003',
+    '30000000-0000-4000-8000-000000000003',
+    null,
+    'activated',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-07T09:05:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000007',
+    '20000000-0000-4000-8000-000000000004',
+    '30000000-0000-4000-8000-000000000004',
+    null,
+    'published',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-08T09:00:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000008',
+    '20000000-0000-4000-8000-000000000004',
+    '30000000-0000-4000-8000-000000000004',
+    null,
+    'activated',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-08T09:05:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000009',
+    '20000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000005',
+    null,
+    'published',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-09T09:00:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000010',
+    '20000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000005',
+    null,
+    'activated',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-09T09:05:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000011',
+    '20000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000006',
+    '30000000-0000-4000-8000-000000000005',
+    'published',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true,"reason":"promoted comparison-ready merged version"}'::jsonb,
+    '2026-03-10T11:00:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000012',
+    '20000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000006',
+    '30000000-0000-4000-8000-000000000005',
+    'activated',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true,"reason":"promoted comparison-ready merged version"}'::jsonb,
+    '2026-03-10T11:05:00+00'::timestamptz
   );
 
 insert into public.invites (

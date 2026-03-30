@@ -54,6 +54,12 @@ const quickLinks = [
     title: "Publishing",
   },
   {
+    description: "Inspect admin-gated experimental integration readiness.",
+    href: routes.adminApis,
+    icon: FolderKanban,
+    title: "APIs",
+  },
+  {
     description: "Bounded placeholder for future operational oversight.",
     href: routes.adminPipelineRuns,
     icon: FolderKanban,

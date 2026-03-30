@@ -20,7 +20,8 @@ const datasetSelect =
 
 const datasetVersionSelect =
   "id, dataset_id, version_number, column_definitions, row_count, " +
-  "source_ref, metadata, created_at";
+  "source_ref, metadata, notes, change_summary, published_at, " +
+  "published_by, created_at";
 
 const datasetRowSelect =
   "id, dataset_version_id, pipeline_row_id, row_index, attributes, " +
