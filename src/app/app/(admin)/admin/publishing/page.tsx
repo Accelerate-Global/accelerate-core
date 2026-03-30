@@ -1,6 +1,14 @@
-import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
-import { routes } from "@/lib/routes";
+import { AdminPublishingPageView } from "@/features/admin/publishing/page";
+import { loadAdminPublishingPage } from "@/features/admin/publishing/server";
 
-export default function AdminPublishingPage() {
-  return <RoutePlaceholder route={routes.adminPublishing} />;
+interface AdminPublishingPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function AdminPublishingPage({
+  searchParams,
+}: AdminPublishingPageProps) {
+  const pageData = await loadAdminPublishingPage(await searchParams);
+
+  return <AdminPublishingPageView {...pageData} />;
 }

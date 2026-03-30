@@ -22,6 +22,7 @@ interface JsonRecord {
 
 type DatasetRecord = Tables<"datasets">;
 type DatasetRowRecord = Tables<"dataset_rows">;
+type DatasetVersionSourceRecord = Tables<"dataset_version_sources">;
 type DatasetVersionRecord = Tables<"dataset_versions">;
 
 export const datasetColumnDefinitionSchema = z.object({
@@ -72,6 +73,14 @@ export interface DatasetVersion {
   versionNumber: number;
 }
 
+export interface DatasetVersionSource {
+  createdAt: string;
+  datasetVersionId: string;
+  id: string;
+  relationType: string;
+  sourceDatasetVersionId: string;
+}
+
 export interface DatasetRow {
   attributes: JsonRecord;
   createdAt: string;
@@ -81,6 +90,18 @@ export interface DatasetRow {
   pipelineRowId: string;
   rowIndex: number | null;
   updatedAt: string;
+}
+
+export interface DatasetWorkspaceReference {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface DatasetLineageSummary {
+  isDerived: boolean;
+  relationTypes: string[];
+  sourceCount: number;
 }
 
 const isJsonRecord = (value: Json | null | undefined): value is JsonRecord => {
@@ -139,6 +160,18 @@ export const normalizeDatasetVersion = (
     rowCount: datasetVersion.row_count,
     sourceRef: datasetVersion.source_ref,
     versionNumber: datasetVersion.version_number,
+  };
+};
+
+export const normalizeDatasetVersionSource = (
+  datasetVersionSource: DatasetVersionSourceRecord
+): DatasetVersionSource => {
+  return {
+    createdAt: datasetVersionSource.created_at,
+    datasetVersionId: datasetVersionSource.dataset_version_id,
+    id: datasetVersionSource.id,
+    relationType: datasetVersionSource.relation_type,
+    sourceDatasetVersionId: datasetVersionSource.source_dataset_version_id,
   };
 };
 

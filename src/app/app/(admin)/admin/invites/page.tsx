@@ -1,6 +1,14 @@
-import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
-import { routes } from "@/lib/routes";
+import { AdminInvitesPageView } from "@/features/admin/invites/page";
+import { loadAdminInvitesPage } from "@/features/admin/invites/server";
 
-export default function AdminInvitesPage() {
-  return <RoutePlaceholder route={routes.adminInvites} />;
+interface AdminInvitesPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function AdminInvitesPage({
+  searchParams,
+}: AdminInvitesPageProps) {
+  const pageData = await loadAdminInvitesPage(await searchParams);
+
+  return <AdminInvitesPageView {...pageData} />;
 }

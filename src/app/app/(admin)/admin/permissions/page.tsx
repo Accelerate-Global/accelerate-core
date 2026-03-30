@@ -1,6 +1,14 @@
-import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
-import { routes } from "@/lib/routes";
+import { AdminPermissionsPageView } from "@/features/admin/permissions/page";
+import { loadAdminPermissionsPage } from "@/features/admin/permissions/server";
 
-export default function AdminPermissionsPage() {
-  return <RoutePlaceholder route={routes.adminPermissions} />;
+interface AdminPermissionsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function AdminPermissionsPage({
+  searchParams,
+}: AdminPermissionsPageProps) {
+  const pageData = await loadAdminPermissionsPage(await searchParams);
+
+  return <AdminPermissionsPageView {...pageData} />;
 }

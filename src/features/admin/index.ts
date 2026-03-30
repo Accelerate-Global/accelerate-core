@@ -1,6 +1,6 @@
 export const adminFeatureStatus = {
-  phase: "Phase 2+",
-  status: "deferred",
+  phase: "Phase 6",
+  status: "implemented",
   summary:
-    "Administrative CRUD, invite operations, and operational tooling are intentionally scaffold-only in Phase 1.",
+    "Administrative users, invites, permissions, datasets, and publishing are implemented. API and run oversight remain bounded placeholders until real backing systems are provided.",
 } as const;

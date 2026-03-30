@@ -1,6 +1,14 @@
-import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
-import { routes } from "@/lib/routes";
+import { AdminUsersPageView } from "@/features/admin/users/page";
+import { loadAdminUsersPage } from "@/features/admin/users/server";
 
-export default function AdminUsersPage() {
-  return <RoutePlaceholder route={routes.adminUsers} />;
+interface AdminUsersPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function AdminUsersPage({
+  searchParams,
+}: AdminUsersPageProps) {
+  const pageData = await loadAdminUsersPage(await searchParams);
+
+  return <AdminUsersPageView {...pageData} />;
 }
