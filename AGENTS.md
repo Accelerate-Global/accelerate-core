@@ -130,8 +130,10 @@ Most formatting and common issues are automatically fixed by Biome. Run `npm exe
   - `npm_config_cache=.tmp/npm-cache npx vercel@latest <command>`
 - The repo is linked to the Vercel project `accelerate-global/accelerate-core`.
 - Do not push directly to the protected `preview` branch.
-  - When work needs to land on `preview`, create a feature branch, open a PR targeting `preview`, and merge that PR through GitHub.
-- After a branch is merged successfully, return to the default branch, clean up merged branches locally and remotely, and sync the default branch with origin.
+  - The required publish flow is: create a feature branch, commit on that branch, push that branch, open a PR targeting `preview`, merge through GitHub, switch the local checkout back to `preview`, sync `preview` with `origin/preview`, then clean up the merged feature branch locally and remotely.
+  - Do not leave work on `preview` locally while preparing the PR.
+  - If GitHub MCP PR creation fails or lacks permission, use the GitHub CLI as the fallback so the flow still remains branch -> commit -> push -> PR -> merge.
+- After a branch is merged successfully, return to `preview`, clean up merged branches locally and remotely, and sync `preview` with origin.
 - Prefer read-only inspection commands first:
   - `whoami`
   - `list`
