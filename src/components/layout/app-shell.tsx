@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import type { ShellNavItem } from "@/components/layout/nav-items";
 import { SidebarNav } from "@/components/layout/sidebar-nav";
 import { Topbar } from "@/components/layout/topbar";
 import type { AppRoute } from "@/lib/routes";
@@ -10,6 +11,7 @@ interface AppShellProps {
     label: string;
   };
   children: ReactNode;
+  navItems: readonly ShellNavItem[];
   shellDescription: string;
   shellTitle: string;
   variant: "admin" | "product";
@@ -18,6 +20,7 @@ interface AppShellProps {
 export const AppShell = ({
   backLink,
   children,
+  navItems,
   shellDescription,
   shellTitle,
   variant,
@@ -32,6 +35,7 @@ export const AppShell = ({
     >
       <SidebarNav
         backLink={backLink}
+        items={navItems}
         shellDescription={shellDescription}
         shellTitle={shellTitle}
         variant={variant}
@@ -40,7 +44,7 @@ export const AppShell = ({
         <Topbar
           note={
             variant === "admin"
-              ? "Admin and operations scaffold. Enforcement lands in Phase 2."
+              ? "Administrative operations and dataset controls."
               : "Shared dataset browser for authenticated product access."
           }
           variant={variant}

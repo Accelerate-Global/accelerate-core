@@ -204,6 +204,16 @@ values
     false,
     '10000000-0000-4000-8000-000000000001',
     '{"seedCategory":"shared"}'::jsonb
+  ),
+  (
+    '20000000-0000-4000-8000-000000000005',
+    'workspace-a-combined-signals',
+    'Workspace A Combined Signals',
+    'Merged dataset output owned by Workspace A and shared to Workspace B.',
+    'shared',
+    false,
+    '10000000-0000-4000-8000-000000000001',
+    '{"seedCategory":"merged"}'::jsonb
   );
 
 insert into public.dataset_versions (
@@ -343,6 +353,48 @@ values
     2,
     'seed/shared.csv',
     '{"seedCategory":"shared"}'::jsonb
+  ),
+  (
+    '30000000-0000-4000-8000-000000000005',
+    '20000000-0000-4000-8000-000000000005',
+    1,
+    '{
+      "columns": [
+        {
+          "key": "pipeline_row_id",
+          "label": "Row ID",
+          "dataType": "text",
+          "source": "pipeline_row_id",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "system"
+        },
+        {
+          "key": "account_name",
+          "label": "Account",
+          "dataType": "text",
+          "source": "attributes.account_name",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        },
+        {
+          "key": "market_name",
+          "label": "Market",
+          "dataType": "text",
+          "source": "attributes.market_name",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        }
+      ]
+    }'::jsonb,
+    2,
+    'seed/workspace-a-combined-signals.csv',
+    '{"seedCategory":"merged"}'::jsonb
   );
 
 update public.datasets
@@ -360,6 +412,30 @@ where id = '20000000-0000-4000-8000-000000000003';
 update public.datasets
 set active_version_id = '30000000-0000-4000-8000-000000000004'
 where id = '20000000-0000-4000-8000-000000000004';
+
+update public.datasets
+set active_version_id = '30000000-0000-4000-8000-000000000005'
+where id = '20000000-0000-4000-8000-000000000005';
+
+insert into public.dataset_version_sources (
+  id,
+  dataset_version_id,
+  source_dataset_version_id,
+  relation_type
+)
+values
+  (
+    '60000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000002',
+    'merged_from'
+  ),
+  (
+    '60000000-0000-4000-8000-000000000002',
+    '30000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000004',
+    'merged_from'
+  );
 
 insert into public.dataset_rows (
   id,
@@ -425,6 +501,22 @@ values
     2,
     '{"market_name":"DACH","status":"Pilot"}'::jsonb,
     '{"ingestedFrom":"seed/shared.csv"}'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000008',
+    '30000000-0000-4000-8000-000000000005',
+    'combined-1',
+    1,
+    '{"account_name":"Apex Manufacturing","market_name":"Nordics","status":"Active"}'::jsonb,
+    '{"ingestedFrom":"seed/workspace-a-combined-signals.csv"}'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000009',
+    '30000000-0000-4000-8000-000000000005',
+    'combined-2',
+    2,
+    '{"account_name":"Pioneer Logistics","market_name":"DACH","status":"Pilot"}'::jsonb,
+    '{"ingestedFrom":"seed/workspace-a-combined-signals.csv"}'::jsonb
   );
 
 insert into public.dataset_access (
@@ -442,6 +534,12 @@ values
   ),
   (
     '20000000-0000-4000-8000-000000000004',
+    null,
+    '10000000-0000-4000-8000-000000000002',
+    '11111111-1111-4111-8111-111111111111'
+  ),
+  (
+    '20000000-0000-4000-8000-000000000005',
     null,
     '10000000-0000-4000-8000-000000000002',
     '11111111-1111-4111-8111-111111111111'

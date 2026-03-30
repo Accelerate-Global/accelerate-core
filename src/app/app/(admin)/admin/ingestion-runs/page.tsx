@@ -1,6 +1,8 @@
-import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
-import { routes } from "@/lib/routes";
+import { AdminOversightPageView } from "@/features/admin/operations/page";
+import { loadAdminOversightPage } from "@/features/admin/operations/server";
 
-export default function AdminIngestionRunsPage() {
-  return <RoutePlaceholder route={routes.adminIngestionRuns} />;
+export default async function AdminIngestionRunsPage() {
+  const pageData = await loadAdminOversightPage("ingestion-runs");
+
+  return <AdminOversightPageView {...pageData} />;
 }

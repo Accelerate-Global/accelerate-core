@@ -92,6 +92,45 @@ export interface Database {
           },
         ];
       };
+      dataset_version_sources: {
+        Row: {
+          created_at: string;
+          dataset_version_id: string;
+          id: string;
+          relation_type: string;
+          source_dataset_version_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          dataset_version_id: string;
+          id?: string;
+          relation_type?: string;
+          source_dataset_version_id: string;
+        };
+        Update: {
+          created_at?: string;
+          dataset_version_id?: string;
+          id?: string;
+          relation_type?: string;
+          source_dataset_version_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "dataset_version_sources_dataset_version_id_fkey";
+            columns: ["dataset_version_id"];
+            isOneToOne: false;
+            referencedRelation: "dataset_versions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "dataset_version_sources_source_dataset_version_id_fkey";
+            columns: ["source_dataset_version_id"];
+            isOneToOne: false;
+            referencedRelation: "dataset_versions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       dataset_versions: {
         Row: {
           column_definitions: Json;

@@ -32,6 +32,41 @@ const getDatasetHref = (datasetId: string): string => {
   return routes.datasetDetail.replace("[datasetId]", datasetId);
 };
 
+const getWorkspaceSummary = (dataset: DatasetSummary): string | null => {
+  if (!dataset.ownerWorkspace) {
+    return null;
+  }
+
+  if (dataset.accessMode === "workspace") {
+    return `Owned by ${dataset.ownerWorkspace.name}`;
+  }
+
+  if (dataset.accessMode === "shared") {
+    const sharedLabel =
+      dataset.sharedWorkspaceCount === 0
+        ? "no extra approved workspaces yet"
+        : `shared to ${dataset.sharedWorkspaceCount.toLocaleString()} approved ${
+            dataset.sharedWorkspaceCount === 1 ? "workspace" : "workspaces"
+          }`;
+
+    return `${dataset.ownerWorkspace.name} owner · ${sharedLabel}`;
+  }
+
+  return null;
+};
+
+const getLineageSummary = (dataset: DatasetSummary): string | null => {
+  if (!dataset.lineageSummary.isDerived) {
+    return null;
+  }
+
+  return `Derived from ${dataset.lineageSummary.sourceCount.toLocaleString()} ${
+    dataset.lineageSummary.sourceCount === 1
+      ? "source version"
+      : "source versions"
+  }`;
+};
+
 export const DatasetDirectory = ({ datasets }: DatasetDirectoryProps) => {
   if (datasets.length === 0) {
     return (
@@ -67,6 +102,16 @@ export const DatasetDirectory = ({ datasets }: DatasetDirectoryProps) => {
               <FileClock aria-hidden="true" className="size-4" />
               <span>{getDatasetVersionSummary(dataset)}</span>
             </div>
+            {getWorkspaceSummary(dataset) ? (
+              <p className="text-muted-foreground">
+                {getWorkspaceSummary(dataset)}
+              </p>
+            ) : null}
+            {getLineageSummary(dataset) ? (
+              <p className="text-muted-foreground">
+                {getLineageSummary(dataset)}
+              </p>
+            ) : null}
             <div className="flex items-center gap-2 text-muted-foreground">
               <Rows3 aria-hidden="true" className="size-4" />
               <span>

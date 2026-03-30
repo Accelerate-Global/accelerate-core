@@ -1,6 +1,14 @@
-import { RoutePlaceholder } from "@/features/scaffold/route-placeholder";
-import { routes } from "@/lib/routes";
+import { WorkspacePageView } from "@/features/workspaces/page";
+import { loadWorkspacePage } from "@/features/workspaces/server";
 
-export default function WorkspacePage() {
-  return <RoutePlaceholder route={routes.workspace} />;
+interface WorkspacePageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function WorkspacePage({
+  searchParams,
+}: WorkspacePageProps) {
+  const pageData = await loadWorkspacePage(await searchParams);
+
+  return <WorkspacePageView {...pageData} />;
 }

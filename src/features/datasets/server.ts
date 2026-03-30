@@ -4,9 +4,11 @@ import {
   type Dataset,
   type DatasetRow,
   type DatasetVersion,
+  type DatasetVersionSource,
   normalizeDataset,
   normalizeDatasetRow,
   normalizeDatasetVersion,
+  normalizeDatasetVersionSource,
 } from "@/features/datasets/types";
 import { createServiceRoleSupabaseClient } from "@/lib/supabase/admin";
 import type { Tables } from "@/lib/supabase/database.types";
@@ -23,6 +25,9 @@ const datasetVersionSelect =
 const datasetRowSelect =
   "id, dataset_version_id, pipeline_row_id, row_index, attributes, " +
   "lineage, created_at, updated_at";
+
+const datasetVersionSourceSelect =
+  "id, dataset_version_id, source_dataset_version_id, relation_type, created_at";
 
 const toErrorMessage = (message: string, cause?: string): string => {
   if (!cause) {
@@ -196,4 +201,73 @@ export const getDatasetVersionRecordByIdAdmin = async (
   }
 
   return data as Tables<"dataset_versions"> | null;
+};
+
+export const listDatasetAccessByDatasetIdsAdmin = async (
+  datasetIds: string[]
+): Promise<Tables<"dataset_access">[]> => {
+  if (datasetIds.length === 0) {
+    return [];
+  }
+
+  const supabase = createServiceRoleSupabaseClient();
+  const { data, error } = await supabase
+    .from("dataset_access")
+    .select("id, dataset_id, user_id, workspace_id, granted_by, created_at")
+    .in("dataset_id", datasetIds);
+
+  if (error) {
+    throw new Error(
+      toErrorMessage("Failed to load dataset access records", error.message)
+    );
+  }
+
+  return (data ?? []) as Tables<"dataset_access">[];
+};
+
+export const listWorkspaceRecordsByIdsAdmin = async (
+  workspaceIds: string[]
+): Promise<Tables<"workspaces">[]> => {
+  if (workspaceIds.length === 0) {
+    return [];
+  }
+
+  const supabase = createServiceRoleSupabaseClient();
+  const { data, error } = await supabase
+    .from("workspaces")
+    .select("id, slug, name, description, created_at, updated_at")
+    .in("id", workspaceIds);
+
+  if (error) {
+    throw new Error(
+      toErrorMessage("Failed to load workspace records", error.message)
+    );
+  }
+
+  return (data ?? []) as Tables<"workspaces">[];
+};
+
+export const listDatasetVersionSourcesByDatasetVersionIdsAdmin = async (
+  datasetVersionIds: string[]
+): Promise<DatasetVersionSource[]> => {
+  if (datasetVersionIds.length === 0) {
+    return [];
+  }
+
+  const supabase = createServiceRoleSupabaseClient();
+  const { data, error } = await supabase
+    .from("dataset_version_sources")
+    .select(datasetVersionSourceSelect)
+    .in("dataset_version_id", datasetVersionIds)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(
+      toErrorMessage("Failed to load dataset version sources", error.message)
+    );
+  }
+
+  return ((data ?? []) as Tables<"dataset_version_sources">[]).map(
+    normalizeDatasetVersionSource
+  );
 };

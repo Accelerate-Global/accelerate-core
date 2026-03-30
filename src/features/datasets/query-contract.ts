@@ -34,13 +34,28 @@ export const jsonValueSchema: z.ZodType<
 
 export const datasetAccessModeSchema = z.enum(datasetAccessModeValues);
 
+export const datasetWorkspaceSummarySchema = z.object({
+  id: z.string().uuid(),
+  name: z.string().trim().min(1),
+  slug: z.string().trim().min(1),
+});
+
+export const datasetLineageSummarySchema = z.object({
+  isDerived: z.boolean(),
+  relationTypes: z.array(z.string().trim().min(1)),
+  sourceCount: z.number().int().nonnegative(),
+});
+
 export const datasetSummarySchema = z.object({
   activeVersionId: z.string().uuid().nullable(),
   accessMode: datasetAccessModeSchema,
   id: z.string().uuid(),
   isHomeDataset: z.boolean(),
+  lineageSummary: datasetLineageSummarySchema,
   name: z.string().trim().min(1),
+  ownerWorkspace: datasetWorkspaceSummarySchema.nullable(),
   rowCount: z.number().int().nonnegative(),
+  sharedWorkspaceCount: z.number().int().nonnegative(),
   slug: z.string().trim().min(1),
 });
 
@@ -53,11 +68,14 @@ export const datasetMetadataDatasetSchema = datasetSummarySchema.pick({
   id: true,
   isHomeDataset: true,
   name: true,
+  ownerWorkspace: true,
+  sharedWorkspaceCount: true,
   slug: true,
 });
 
 export const datasetMetadataVersionSchema = z.object({
   id: z.string().uuid(),
+  lineageSummary: datasetLineageSummarySchema,
   rowCount: z.number().int().nonnegative(),
   versionNumber: z.number().int().positive(),
 });
@@ -141,6 +159,7 @@ export type DatasetColumnDefinition = z.infer<
   typeof datasetColumnDefinitionSchema
 >;
 export type DatasetFilter = z.infer<typeof datasetFilterSchema>;
+export type DatasetLineageSummary = z.infer<typeof datasetLineageSummarySchema>;
 export type DatasetListResponse = z.infer<typeof datasetListResponseSchema>;
 export type DatasetMetadataResponse = z.infer<
   typeof datasetMetadataResponseSchema
@@ -149,3 +168,6 @@ export type DatasetQueryRequest = z.infer<typeof datasetQueryRequestSchema>;
 export type DatasetQueryResponse = z.infer<typeof datasetQueryResponseSchema>;
 export type DatasetSort = z.infer<typeof datasetSortSchema>;
 export type DatasetSummary = z.infer<typeof datasetSummarySchema>;
+export type DatasetWorkspaceSummary = z.infer<
+  typeof datasetWorkspaceSummarySchema
+>;

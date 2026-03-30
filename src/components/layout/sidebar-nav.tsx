@@ -1,15 +1,27 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, LayoutDashboard } from "lucide-react";
+import {
+  ArrowDownToLine,
+  Briefcase,
+  ChevronLeft,
+  ChevronRight,
+  Database,
+  GitBranch,
+  House,
+  KeyRound,
+  LayoutDashboard,
+  MailPlus,
+  PlugZap,
+  Send,
+  Shield,
+  UserRound,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useState } from "react";
 
-import {
-  adminNavItems,
-  productNavItems,
-  type ShellNavItem,
-} from "@/components/layout/nav-items";
+import type { ShellNavIcon, ShellNavItem } from "@/components/layout/nav-items";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -25,13 +37,32 @@ interface SidebarNavProps {
     href: AppRoute;
     label: string;
   };
+  items: readonly ShellNavItem[];
   shellDescription: string;
   shellTitle: string;
   variant: "admin" | "product";
 }
 
+const navIconMap = {
+  admin: Shield,
+  apis: PlugZap,
+  back: ChevronLeft,
+  datasets: Database,
+  home: House,
+  "ingestion-runs": ArrowDownToLine,
+  invites: MailPlus,
+  overview: LayoutDashboard,
+  permissions: KeyRound,
+  "pipeline-runs": GitBranch,
+  profile: UserRound,
+  publishing: Send,
+  users: Users,
+  workspace: Briefcase,
+} as const satisfies Record<ShellNavIcon, typeof LayoutDashboard>;
+
 const SidebarNav = ({
   backLink,
+  items,
   shellDescription,
   shellTitle,
   variant,
@@ -39,9 +70,9 @@ const SidebarNav = ({
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const isAdminVariant = variant === "admin";
-  const items = isAdminVariant ? adminNavItems : productNavItems;
 
   const renderNavLink = (item: ShellNavItem): ReactNode => {
+    const Icon = navIconMap[item.icon];
     const isActive = isRouteActive(pathname, item.href);
     let stateClasses =
       "text-muted-foreground hover:bg-accent/60 hover:text-foreground focus-visible:ring-ring";
@@ -66,7 +97,7 @@ const SidebarNav = ({
         )}
         href={item.href}
       >
-        <item.icon aria-hidden="true" className="size-4 shrink-0" />
+        <Icon aria-hidden="true" className="size-4 shrink-0" />
         {isCollapsed ? (
           <span className="sr-only">{item.label}</span>
         ) : (
@@ -159,7 +190,7 @@ const SidebarNav = ({
           <div className="border-t px-2 py-3">
             {renderNavLink({
               href: backLink.href,
-              icon: ChevronLeft,
+              icon: "back",
               label: backLink.label,
             })}
           </div>
