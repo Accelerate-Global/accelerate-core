@@ -27,16 +27,7 @@ export const getCurrentAppRole = async (): Promise<AppRole> => {
 };
 
 export const isCurrentUserAdmin = async (): Promise<boolean> => {
-  const supabase = await createServerSupabaseClient();
-  const { data, error } = await supabase.rpc("is_admin");
-
-  if (error) {
-    throw new Error(
-      toErrorMessage("Failed to determine admin access", error.message)
-    );
-  }
-
-  return data ?? false;
+  return (await getCurrentAppRole()) === "admin";
 };
 
 export const canCurrentUserReadDataset = async (
