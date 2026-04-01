@@ -145,6 +145,8 @@ max_indexes = 5
 
 [auth]
 enabled = true
+# Local Supabase CLI auth config only.
+# This file does not configure hosted Supabase Dashboard/Auth redirect allowlists.
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
 site_url = "http://127.0.0.1:3000"
