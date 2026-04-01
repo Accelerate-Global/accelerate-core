@@ -90,6 +90,13 @@ const normalizeAppUrl = (value: string): string => {
   return `https://${value}`;
 };
 
+/**
+ * Prefer setting `NEXT_PUBLIC_APP_URL` on Vercel. If it is unset, this falls back to
+ * `VERCEL_BRANCH_URL` then `VERCEL_URL`. A per-deployment `VERCEL_URL` becomes the
+ * `emailRedirectTo` host for magic links; that hostname can differ from your stable
+ * preview URL and interact badly with Vercel Deployment Protection on the first
+ * unauthenticated request to `/auth/callback`.
+ */
 const getVercelAppUrl = (): string | null => {
   const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
   const vercelBranchUrl = process.env.VERCEL_BRANCH_URL?.trim();

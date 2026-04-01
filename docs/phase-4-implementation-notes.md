@@ -67,6 +67,30 @@ Explicitly deferred from Phase 4:
 - DB-level RLS remains active and RPC is `security invoker`
 - unreadable datasets are denied by helper/readability checks (`DATASET_ACCESS_DENIED` path)
 
+## Phase 4 Public Contract Boundary
+
+### Supported endpoints
+
+- `GET /api/datasets` (dataset list)
+- `GET /api/datasets/:datasetId/metadata` (dataset metadata)
+- `POST /api/datasets/:datasetId/query` (dataset row query)
+
+### Supported query behaviors at Phase 4
+
+- Filtering operators accepted by the request contract: `eq`, `neq`, `in`, `contains`, `startsWith`, `gt`, `gte`, `lt`, `lte`, `isNull`
+- Operator constraints enforced by implementation:
+  - `contains` and `startsWith` are only supported for text fields
+  - `gt`, `gte`, `lt`, and `lte` are only supported for comparable fields (`number`, `date`, `datetime`)
+- Filter/sort fields must map to dataset columns marked queryable (`filterable`/`sortable`) and backed by supported sources (`created_at`, `updated_at`, `pipeline_row_id`, or `attributes.<key>` with no nested path)
+- Sorting supports `asc`/`desc` with up to 3 sort clauses
+- Pagination supports `page >= 1`, `pageSize` from 1 to 100, and normalizes out-of-range pages to the last available page
+- Count semantics return `totalRows` and derived `totalPages` with each query response
+
+### Intentionally excluded from default row payload
+
+- `lineage`
+- `rowIndex`
+
 ## Acceptance Criteria Used for Closeout
 
 Phase 4 is considered complete when all are true:
