@@ -40,6 +40,14 @@ export const placeholderDefinitions = {
     title: "Auth Callback",
     zone: "Public",
   },
+  [routes.authSetupIncomplete]: {
+    description:
+      "The setup-incomplete route catches signed-in users whose profile or invite finalization failed after callback completion.",
+    futurePurpose:
+      "This route should remain a recovery path with retry and sign-out actions for incomplete onboarding states.",
+    title: "Setup Incomplete",
+    zone: "Public",
+  },
   [routes.appHome]: {
     description:
       "The signed-in product shell starts here and separates user-facing browsing from admin operations.",

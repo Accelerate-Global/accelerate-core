@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { createInviteAction } from "@/features/admin/invites/actions";
 import {
   createInitialAdminActionState,
@@ -39,8 +40,20 @@ export const CreateInviteForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <form action={formAction} className="flex flex-col gap-3 sm:flex-row">
-          <Input name="email" placeholder="person@example.com" type="email" />
+        <form action={formAction} className="grid gap-3">
+          <Input
+            name="email"
+            placeholder="person@example.com"
+            required
+            type="email"
+          />
+          <label className="grid gap-2" htmlFor="invite-role">
+            <span className="font-medium text-sm">Invite role</span>
+            <Select defaultValue="user" id="invite-role" name="role">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </Select>
+          </label>
           <Button disabled={isPending} type="submit">
             {isPending ? "Creating..." : "Create invite"}
           </Button>
