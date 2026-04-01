@@ -30,8 +30,12 @@ What it does not implement yet:
 - Create the Supabase project.
 - Copy the Supabase URL, anon key, and service role key into local environment variables.
 - Set the Supabase environment variables in Vercel preview and production.
-- Keep `NEXT_PUBLIC_APP_URL=http://localhost:3000` locally. On Vercel, this repo can derive the deployed app URL from Vercel system environment variables when your preview and production domains are configured.
-- Connect the repo to Vercel and verify a preview deployment.
+- Keep `NEXT_PUBLIC_APP_URL=http://localhost:3000` locally.
+- In Vercel production, set `NEXT_PUBLIC_APP_URL=https://data.accelerateglobal.org`.
+- Do not rely on Vercel system URL variables for production auth redirects or invite links.
+- If preview auth testing is needed, prefer an explicit preview `NEXT_PUBLIC_APP_URL` over deployment-host fallback.
+- In the hosted Supabase Dashboard, configure Auth `site_url` and allowed redirect URLs for `https://data.accelerateglobal.org/auth/callback`.
+- Treat `supabase/config.toml` as local CLI-only config; it does not configure hosted Supabase Auth.
 
 ## Supabase CLI
 
