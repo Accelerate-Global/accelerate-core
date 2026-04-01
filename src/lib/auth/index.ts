@@ -1,6 +1,6 @@
 export const authFoundationStatus = {
-  phase: "Phase 1",
-  status: "deferred",
+  phase: "Phase 2",
+  status: "implemented",
   summary:
-    "Authentication, route protection, and invite enforcement are intentionally deferred until the Phase 2 auth/access milestone.",
+    "Authentication entry flow, route protection, and invite enforcement are implemented for invite-only onboarding.",
 } as const;

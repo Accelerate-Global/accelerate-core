@@ -39,12 +39,14 @@ const loadDatasetForPermissionAction = async (
   return data as Tables<"datasets">;
 };
 
-const revalidatePermissionsPaths = (): void => {
+const revalidatePermissionsPaths = (datasetId: string): void => {
+  revalidatePath(getPermissionsDatasetPath(datasetId));
   revalidatePath(routes.adminPermissions);
   revalidatePath(routes.adminDatasets);
   revalidatePath(routes.adminPublishing);
   revalidatePath(routes.appHome);
   revalidatePath(routes.datasets);
+  revalidatePath(routes.datasetDetail.replace("[datasetId]", datasetId));
   revalidatePath(routes.workspace);
 };
 
@@ -108,7 +110,7 @@ export const grantUserDatasetAccessAction = async (
     }
   }
 
-  revalidatePermissionsPaths();
+  revalidatePermissionsPaths(datasetId);
   redirect(getPermissionsDatasetPath(datasetId));
 };
 
@@ -139,7 +141,7 @@ export const revokeUserDatasetAccessAction = async (
     );
   }
 
-  revalidatePermissionsPaths();
+  revalidatePermissionsPaths(datasetId);
   redirect(getPermissionsDatasetPath(datasetId));
 };
 
@@ -208,7 +210,7 @@ export const grantWorkspaceDatasetAccessAction = async (
     }
   }
 
-  revalidatePermissionsPaths();
+  revalidatePermissionsPaths(datasetId);
   redirect(getPermissionsDatasetPath(datasetId));
 };
 
@@ -239,6 +241,6 @@ export const revokeWorkspaceDatasetAccessAction = async (
     );
   }
 
-  revalidatePermissionsPaths();
+  revalidatePermissionsPaths(datasetId);
   redirect(getPermissionsDatasetPath(datasetId));
 };

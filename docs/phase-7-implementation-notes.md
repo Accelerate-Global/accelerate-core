@@ -135,3 +135,63 @@ The pipeline must populate:
 - `dataset_version_sources` rows for merged outputs
 
 Merged outputs must continue to be emitted as real dataset/version records, not temporary joins.
+
+## Phase 7 Closeout: Mutation Durability Validation
+
+Date: 2026-04-01
+
+Validation target: admin permissions mutation durability for dataset-scoped
+grant/revoke behavior, with related-page freshness and repeated-cycle stability.
+
+### Flows proven
+
+- Private dataset direct-user grant/revoke:
+  - dataset context persisted through repeated mutation cycles
+  - selected dataset URL context (`?datasetId=...`) remained intact
+  - granted users left selectable inventory immediately
+  - revoked users re-entered selectable inventory immediately
+  - owner-b access appeared/disappeared in product dataset views as expected
+- Shared dataset workspace grant/revoke:
+  - owner workspace stayed implicit and non-revokable
+  - shared dataset did not expose new direct-user grant creation
+  - granted workspace left selectable inventory immediately
+  - revoked workspace re-entered selectable inventory immediately
+  - owner-b shared visibility appeared/disappeared in product views as expected
+- Related surfaces were rechecked during mutation cycles:
+  - `/app/admin/permissions`
+  - `/app/admin/datasets`
+  - `/app/datasets`
+  - `/app/datasets/[datasetId]`
+  - `/app/workspace`
+- Browser refresh after completed mutations reflected authoritative state.
+
+### Regression discovered and fixed
+
+- Observed issue:
+  - shared-workspace revoke completed in DB, but grantable-workspace selector on
+    `/app/admin/permissions` could remain stale until a hard reload.
+- Root cause:
+  - permissions mutations revalidated broad routes, but did not explicitly
+    revalidate the selected dataset-scoped permissions URL and dataset detail
+    path tied to the active mutation context.
+- Minimal fix:
+  - updated `src/features/admin/permissions/actions.ts`:
+    - `revalidatePermissionsPaths(datasetId)` now revalidates:
+      - `routes.adminPermissions` scoped URL with `?datasetId=...`
+      - dataset detail route for the mutated dataset
+    - all permission mutations now call this dataset-scoped revalidator before
+      redirect.
+
+### Durability evidence artifacts
+
+- Full browser matrix harness:
+  - `.tmp/phase7-permissions-durability-validation.mjs`
+- Captured screenshots:
+  - `.tmp/phase7-shots/private-dataset-after-cycles.png`
+  - `.tmp/phase7-shots/shared-dataset-after-cycles.png`
+  - `.tmp/phase7-shots/owner-b-datasets-final.png`
+- Final matrix run result: `status = PASS` with:
+  - `private-cycle-1:pass`
+  - `private-cycle-2:pass`
+  - `shared-cycle-1:pass`
+  - `shared-cycle-2:pass`

@@ -77,7 +77,7 @@ export const DatasetBrowserShell = ({
     null
   );
   const [isQueryLoading, setIsQueryLoading] = useState(false);
-  const [isRouting, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
     setQuery(initialQuery);
@@ -120,6 +120,7 @@ export const DatasetBrowserShell = ({
     queryDatasetRowsClient(datasetId, request, abortController.signal)
       .then((response) => {
         if (abortController.signal.aborted) {
+          setIsQueryLoading(false);
           return;
         }
 
@@ -145,6 +146,7 @@ export const DatasetBrowserShell = ({
       })
       .catch((error: unknown) => {
         if (abortController.signal.aborted) {
+          setIsQueryLoading(false);
           return;
         }
 
@@ -174,7 +176,8 @@ export const DatasetBrowserShell = ({
   const hasActiveSort = Boolean(
     searchState.sortField && searchState.sortDirection
   );
-  const isBusy = isQueryLoading || isRouting;
+  // Keep controls interactive during URL-only router transitions.
+  const isBusy = isQueryLoading;
 
   if (queryError?.status === 403) {
     return <DatasetAccessDeniedState />;

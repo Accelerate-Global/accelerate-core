@@ -92,45 +92,6 @@ export interface Database {
           },
         ];
       };
-      dataset_version_sources: {
-        Row: {
-          created_at: string;
-          dataset_version_id: string;
-          id: string;
-          relation_type: string;
-          source_dataset_version_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          dataset_version_id: string;
-          id?: string;
-          relation_type?: string;
-          source_dataset_version_id: string;
-        };
-        Update: {
-          created_at?: string;
-          dataset_version_id?: string;
-          id?: string;
-          relation_type?: string;
-          source_dataset_version_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "dataset_version_sources_dataset_version_id_fkey";
-            columns: ["dataset_version_id"];
-            isOneToOne: false;
-            referencedRelation: "dataset_versions";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "dataset_version_sources_source_dataset_version_id_fkey";
-            columns: ["source_dataset_version_id"];
-            isOneToOne: false;
-            referencedRelation: "dataset_versions";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       dataset_version_events: {
         Row: {
           actor_user_id: string | null;
@@ -180,6 +141,45 @@ export interface Database {
           {
             foreignKeyName: "dataset_version_events_previous_dataset_version_id_fkey";
             columns: ["previous_dataset_version_id"];
+            isOneToOne: false;
+            referencedRelation: "dataset_versions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      dataset_version_sources: {
+        Row: {
+          created_at: string;
+          dataset_version_id: string;
+          id: string;
+          relation_type: string;
+          source_dataset_version_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          dataset_version_id: string;
+          id?: string;
+          relation_type?: string;
+          source_dataset_version_id: string;
+        };
+        Update: {
+          created_at?: string;
+          dataset_version_id?: string;
+          id?: string;
+          relation_type?: string;
+          source_dataset_version_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "dataset_version_sources_dataset_version_id_fkey";
+            columns: ["dataset_version_id"];
+            isOneToOne: false;
+            referencedRelation: "dataset_versions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "dataset_version_sources_source_dataset_version_id_fkey";
+            columns: ["source_dataset_version_id"];
             isOneToOne: false;
             referencedRelation: "dataset_versions";
             referencedColumns: ["id"];
@@ -434,6 +434,10 @@ export interface Database {
       current_app_role: {
         Args: never;
         Returns: Database["public"]["Enums"]["app_role"];
+      };
+      ensure_invited_auth_user: {
+        Args: { target_email: string };
+        Returns: string;
       };
       is_admin: { Args: { target_user_id?: string }; Returns: boolean };
       query_dataset_rows: {

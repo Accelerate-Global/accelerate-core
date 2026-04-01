@@ -1,6 +1,6 @@
 export const authFeatureStatus = {
-  phase: "Phase 2+",
-  status: "deferred",
+  phase: "Phase 2",
+  status: "implemented",
   summary:
-    "Real invite handling, magic-link authentication, and session-aware UI belong in the auth/access phase.",
+    "Invite onboarding, returning-user magic-link sign-in, and auth callback finalization are implemented for the public auth entry flow.",
 } as const;

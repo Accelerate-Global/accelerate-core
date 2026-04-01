@@ -116,6 +116,7 @@ export const createInviteAction = async (
   }>();
   const actingUser = await requireCurrentUserAdmin();
   const emailValue = formData.get("email");
+  const roleValue = formData.get("role");
 
   if (typeof emailValue !== "string") {
     return {
@@ -126,6 +127,7 @@ export const createInviteAction = async (
   }
 
   const parsedEmail = emailSchema.safeParse(emailValue.toLowerCase());
+  const intendedRole = roleValue === "admin" ? "admin" : "user";
 
   if (!parsedEmail.success) {
     return {
@@ -148,6 +150,7 @@ export const createInviteAction = async (
 
   const invite = await createInviteRecord(parsedEmail.data, actingUser.id, {
     delivery: "manual-link",
+    intended_app_role: intendedRole,
   });
 
   revalidatePath(routes.adminInvites);
@@ -183,7 +186,7 @@ export const regenerateInviteAction = async (
   const supabase = createAdminClient();
   const { data: invite, error: inviteError } = await supabase
     .from("invites")
-    .select("id, email, status, expires_at")
+    .select("id, email, status, expires_at, metadata")
     .eq("id", inviteId)
     .maybeSingle();
 
@@ -231,6 +234,13 @@ export const regenerateInviteAction = async (
 
   const nextInvite = await createInviteRecord(invite.email, actingUser.id, {
     delivery: "manual-link",
+    intended_app_role:
+      typeof invite.metadata === "object" &&
+      invite.metadata !== null &&
+      !Array.isArray(invite.metadata) &&
+      invite.metadata.intended_app_role === "admin"
+        ? "admin"
+        : "user",
     regenerated_from_invite_id: invite.id,
   });
 

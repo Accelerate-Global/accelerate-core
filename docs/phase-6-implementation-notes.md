@@ -2,7 +2,7 @@
 
 ## Scope Status
 
-### Fully functional admin areas
+### Functional admin areas
 
 - `/app/admin`
 - `/app/admin/users`
@@ -11,90 +11,125 @@
 - `/app/admin/datasets`
 - `/app/admin/publishing`
 
-### Bounded placeholders by design
+### Bounded placeholders (intentional)
 
 - `/app/admin/apis`
 - `/app/admin/ingestion-runs`
 - `/app/admin/pipeline-runs`
 
-These three routes are intentionally placeholder-only because the repository
-still does not contain real backing tables, views, or confirmed external
-operational feeds for those surfaces. The placeholder adapter lives in
-`src/features/admin/operations/server.ts` and already enforces admin-only
-access plus explicit integration notes.
+Placeholder status remains intentional because the repository still has no
+confirmed backing run-history/oversight sources for APIs, ingestion runs, or
+pipeline runs. Adapter boundary and integration notes remain in:
+`src/features/admin/operations/server.ts`.
 
-## Closeout QA
+## Closeout Criteria Used
 
-All QA below was run against the local Supabase stack seeded from
-`supabase/seeds/001_phase_3_core_data.sql`, with the Next app started against
-that local project.
+Phase 6 closeout used these criteria:
+
+1. Intended admin route surface exists and loads.
+2. Admin surface is separated from product shell/nav.
+3. Unauthenticated and non-admin route access behavior is correct.
+4. Admin shell/nav is runtime-stable (including icon serialization path).
+5. Core admin areas are operational (dashboard/users/invites/permissions/datasets/publishing).
+6. Placeholder surfaces are bounded and admin-protected.
+7. Repo proof commands pass.
+
+## Validation Run (Phase 6 final proof pass)
+
+Validation was run against a local Supabase reset seeded from
+`supabase/seeds/001_phase_3_core_data.sql` and a fresh Next dev server
+instance.
+
+### Route loading
+
+- `PASS` All intended routes load for admin context:
+  - `/app/admin`
+  - `/app/admin/users`
+  - `/app/admin/invites`
+  - `/app/admin/permissions`
+  - `/app/admin/datasets`
+  - `/app/admin/apis`
+  - `/app/admin/ingestion-runs`
+  - `/app/admin/pipeline-runs`
+  - `/app/admin/publishing`
 
 ### Access control
 
 - `PASS` Unauthenticated `/app/admin` redirects to `/login`.
-  Verified from the live app response payload and redirect metadata.
 - `PASS` Authenticated non-admin `/app/admin` redirects to `/app`.
-- `PASS` Non-admin `/app` does not render the Admin navigation entry.
-- `PASS` Direct non-admin mutation attempts fail at the server boundary.
-  Verified with real POST submissions for:
-  - invite revoke
-  - dataset visibility update
-  - user role update
-  - user dataset-access grant
-  - dataset version activation
-- `PASS` Every admin action module still enforces admin access directly with
-  `requireCurrentUserAdmin()` and does not rely only on layout protection.
+- `PASS` Product shell for non-admin user does not render Admin nav entry.
+- `PASS` Admin actions/loaders are server-enforced via
+  `requireCurrentUserAdmin()` / `requireCurrentUserAdminOrRedirect()` across
+  admin server modules and action handlers.
+- `PASS` Deterministic runtime non-admin mutation rejection proof is now in
+  place using one representative privileged action:
+  - chosen mutation: `updateDatasetVisibilityAction`
+  - proof path: `scripts/phase6-nonadmin-mutation-proof.mjs`
+  - method:
+    1. reset local Supabase to seeded baseline
+    2. capture the real server-action endpoint + payload from the admin
+       datasets visibility form
+    3. replay that same privileged mutation request with a non-admin session
+    4. assert dataset visibility remains unchanged in DB
+  - result: mutation is blocked at runtime (`mutationBlocked: true`)
 
-### Admin mutations
+### Nav/sidebar stability
 
-- `PASS` Invite regenerate revokes the previous invite row and creates a new
-  invite row with a new raw link.
-- `PASS` Old regenerated invite row is no longer pending/actionable.
-- `PASS` Setting a new default global dataset clears the previous default.
-- `PASS` Publishing activation updates `datasets.active_version_id` and the UI
-  reflects the newly active version.
+- `PASS` Admin sidebar renders and active state behavior is correct.
+- `PASS` No admin-shell runtime page errors were observed in route sweep.
+- `PASS` Icon transport remains serialization-safe via string icon keys and
+  client-side icon map resolution.
 
-### QA notes
+### Operational mutation checks
 
-- The seed only provides one version per dataset, so publishing activation was
-  validated by inserting one temporary local `dataset_versions` row during QA,
-  exercising the admin action, then restoring the DB to its prior state.
-- Invite regeneration and dataset-default reassignment were also restored in
-  the local DB after verification so the workspace was not left in a mutated
-  QA state.
-- Local HTTP response captures used during QA were moved under
-  `.tmp/phase6-artifacts/` and are not intended for review or commit.
+- `PASS` Invite create and regenerate are operational.
+  - Regeneration revokes old invite row and creates a replacement row.
+- `PASS` Default-global reassignment behavior is safe.
+  - After reassignment, exactly one dataset remains default global.
+- `PASS` Publishing activation updates active version state.
+  - Activation to prior version and re-activation back to current version both
+    update `datasets.active_version_id` as expected.
+- `PASS` Representative grant path is operational.
+  - Permissions user grant path updates `dataset_access` state.
+- `PASS` Representative role update path is operational.
+  - Users role-update path applies admin promotion.
 
-## Repo Checks
+## Placeholder Surface Review
 
+- `/app/admin/apis`: remains bounded, admin-gated, and explicitly tied to
+  feature-flag/manual-prerequisite integration boundaries.
+- `/app/admin/ingestion-runs`: remains bounded placeholder with explicit
+  integration notes.
+- `/app/admin/pipeline-runs`: remains bounded placeholder with explicit
+  integration notes.
+
+## Repo Proof Commands
+
+- `PASS` `node scripts/phase6-nonadmin-mutation-proof.mjs`
 - `PASS` `npm run check`
 - `PASS` `npm run build`
 
-Notes:
+## Minimal Fixes Made
 
-- A runtime regression surfaced during QA in the admin shell because nav items
-  were passing Lucide component functions across a server-to-client boundary.
-  That was fixed by serializing nav icons as string keys and resolving them in
-  the client sidebar.
-- `npm run check` initially failed on the stock Playwright scaffold plus the
-  temporary QA HTML captures. The scaffold files were normalized, and the QA
-  captures were moved out of the linter path.
+- Added a narrow deterministic proof harness only:
+  - `scripts/phase6-nonadmin-mutation-proof.mjs`
+- No production admin architecture or route-surface changes were made.
 
-## Manual Follow-ups
+## Remaining Manual Follow-ups
 
-- Provide a confirmed backing source for API oversight before making
-  `/app/admin/apis` live.
-- Provide a confirmed ingestion-run table, view, or operational feed before
-  making `/app/admin/ingestion-runs` live.
-- Provide a confirmed pipeline-run table, view, or operational feed before
-  making `/app/admin/pipeline-runs` live.
+- Confirm and integrate real backing sources before un-bounding:
+  - `/app/admin/apis`
+  - `/app/admin/ingestion-runs`
+  - `/app/admin/pipeline-runs`
+- None for the Phase 6 closeout proof gap (resolved).
 
 ## Review Hygiene
 
-Phase 6 review should focus on the admin implementation and the closeout fixes.
-Keep these out of the Phase 6 decision unless they are intentionally being
-cleaned up in the same review:
+Keep unrelated worktree noise out of the Phase 6 closeout decision:
 
-- pre-existing unrelated worktree noise such as `bun.lock`
-- pre-existing `.tmp/pr9-review`
-- local QA artifacts under `.tmp/phase6-artifacts/`
+- existing unrelated lockfile/worktree drift (for example `bun.lock`)
+- transient local `.tmp` artifacts used during validation
+
+## Final Closeout Verdict
+
+`CLOSED`

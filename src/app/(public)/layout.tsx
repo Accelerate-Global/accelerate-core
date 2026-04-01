@@ -12,8 +12,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           </p>
           <h1 className="font-semibold text-3xl tracking-tight">Accelerate</h1>
           <p className="mx-auto max-w-2xl text-base text-muted-foreground leading-7">
-            Phase 1 foundation scaffold for invite-only authentication and the
-            dataset-centric product shell.
+            Invite-only authentication entry point for onboarding and returning
+            user sign-in.
           </p>
         </div>
         <div className="mx-auto w-full max-w-3xl">{children}</div>
