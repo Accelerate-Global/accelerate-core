@@ -1,32 +1,28 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 import { routes } from "@/lib/routes";
-import { createClient } from "@/lib/supabase/middleware";
+import { createMiddlewareSupabaseClient } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
-  const middlewareClient = createClient(request);
+  const { getResponse, supabase } = createMiddlewareSupabaseClient(request);
+  const response = getResponse();
+  const pathname = request.nextUrl.pathname;
   const {
     data: { user },
-  } = await middlewareClient.supabase.auth.getUser();
-  const response = middlewareClient.getResponse();
-  const { pathname } = request.nextUrl;
-  const isAppRoute =
-    pathname === routes.appHome || pathname.startsWith(`${routes.appHome}/`);
+  } = await supabase.auth.getUser();
 
-  if (!user && isAppRoute) {
-    const url = new URL(routes.login, request.url);
-    const redirectResponse = NextResponse.redirect(url);
+  if (pathname.startsWith(routes.appHome) && !user) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = routes.login;
+    loginUrl.search = "";
 
-    for (const { name, value, ...options } of response.cookies.getAll()) {
-      redirectResponse.cookies.set(name, value, options);
-    }
-
-    return redirectResponse;
+    return NextResponse.redirect(loginUrl);
   }
 
   return response;
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon\\.ico|api/health).*)"],
+  matcher: ["/app/:path*"],
 };

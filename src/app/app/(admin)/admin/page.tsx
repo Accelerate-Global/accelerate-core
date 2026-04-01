@@ -1,11 +1,8 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { AdminDashboardPageView } from "@/features/admin/overview/page";
+import { loadAdminDashboardPage } from "@/features/admin/overview/server";
 
-export default function AdminOverviewPage() {
-  return (
-    <PlaceholderPage
-      description="The admin overview will summarize operational health, access posture, and platform status."
-      title="Overview"
-      zone="Admin"
-    />
-  );
+export default async function AdminOverviewPage() {
+  const pageData = await loadAdminDashboardPage();
+
+  return <AdminDashboardPageView {...pageData} />;
 }

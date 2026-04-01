@@ -1,11 +1,8 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { AdminApisPageView } from "@/features/admin/apis/page";
+import { loadAdminApisPage } from "@/features/admin/apis/server";
 
-export default function AdminApisPage() {
-  return (
-    <PlaceholderPage
-      description="API configuration and integration controls will be surfaced here for platform administrators."
-      title="APIs"
-      zone="Admin"
-    />
-  );
+export default async function AdminApisPage() {
+  const pageData = await loadAdminApisPage();
+
+  return <AdminApisPageView {...pageData} />;
 }

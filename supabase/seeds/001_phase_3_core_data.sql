@@ -1,0 +1,846 @@
+do $$
+declare
+  admin_user_id constant uuid := '11111111-1111-4111-8111-111111111111';
+  workspace_a_owner_id constant uuid := '22222222-2222-4222-8222-222222222222';
+  workspace_b_owner_id constant uuid := '33333333-3333-4333-8333-333333333333';
+  dual_workspace_user_id constant uuid := '44444444-4444-4444-8444-444444444444';
+  direct_grant_user_id constant uuid := '55555555-5555-4555-8555-555555555555';
+begin
+  insert into auth.users (
+    instance_id,
+    id,
+    aud,
+    role,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    created_at,
+    updated_at,
+    confirmation_token,
+    email_change,
+    email_change_token_new,
+    recovery_token
+  )
+  values
+    (
+      '00000000-0000-0000-0000-000000000000',
+      admin_user_id,
+      'authenticated',
+      'authenticated',
+      'admin@accelerate.test',
+      crypt('password123', gen_salt('bf')),
+      timezone('utc', now()),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{"name":"Admin User"}'::jsonb,
+      timezone('utc', now()),
+      timezone('utc', now()),
+      '',
+      '',
+      '',
+      ''
+    ),
+    (
+      '00000000-0000-0000-0000-000000000000',
+      workspace_a_owner_id,
+      'authenticated',
+      'authenticated',
+      'owner-a@accelerate.test',
+      crypt('password123', gen_salt('bf')),
+      timezone('utc', now()),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{"name":"Workspace A Owner"}'::jsonb,
+      timezone('utc', now()),
+      timezone('utc', now()),
+      '',
+      '',
+      '',
+      ''
+    ),
+    (
+      '00000000-0000-0000-0000-000000000000',
+      workspace_b_owner_id,
+      'authenticated',
+      'authenticated',
+      'owner-b@accelerate.test',
+      crypt('password123', gen_salt('bf')),
+      timezone('utc', now()),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{"name":"Workspace B Owner"}'::jsonb,
+      timezone('utc', now()),
+      timezone('utc', now()),
+      '',
+      '',
+      '',
+      ''
+    ),
+    (
+      '00000000-0000-0000-0000-000000000000',
+      dual_workspace_user_id,
+      'authenticated',
+      'authenticated',
+      'dual-member@accelerate.test',
+      crypt('password123', gen_salt('bf')),
+      timezone('utc', now()),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{"name":"Dual Workspace Member"}'::jsonb,
+      timezone('utc', now()),
+      timezone('utc', now()),
+      '',
+      '',
+      '',
+      ''
+    ),
+    (
+      '00000000-0000-0000-0000-000000000000',
+      direct_grant_user_id,
+      'authenticated',
+      'authenticated',
+      'direct-grant@accelerate.test',
+      crypt('password123', gen_salt('bf')),
+      timezone('utc', now()),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{"name":"Direct Grant User"}'::jsonb,
+      timezone('utc', now()),
+      timezone('utc', now()),
+      '',
+      '',
+      '',
+      ''
+    );
+
+  update public.profiles
+  set app_role = 'admin'
+  where user_id = admin_user_id;
+end;
+$$;
+
+insert into public.workspaces (id, slug, name, description)
+values
+  (
+    '10000000-0000-4000-8000-000000000001',
+    'workspace-a',
+    'Workspace A',
+    'Primary workspace for owner-scoped and shared datasets.'
+  ),
+  (
+    '10000000-0000-4000-8000-000000000002',
+    'workspace-b',
+    'Workspace B',
+    'Secondary workspace used to prove shared workspace grants.'
+  );
+
+insert into public.workspace_members (workspace_id, user_id, role)
+values
+  (
+    '10000000-0000-4000-8000-000000000001',
+    '22222222-2222-4222-8222-222222222222',
+    'owner'
+  ),
+  (
+    '10000000-0000-4000-8000-000000000001',
+    '44444444-4444-4444-8444-444444444444',
+    'admin'
+  ),
+  (
+    '10000000-0000-4000-8000-000000000002',
+    '33333333-3333-4333-8333-333333333333',
+    'owner'
+  ),
+  (
+    '10000000-0000-4000-8000-000000000002',
+    '44444444-4444-4444-8444-444444444444',
+    'member'
+  );
+
+insert into public.datasets (
+  id,
+  slug,
+  name,
+  description,
+  visibility,
+  is_default_global,
+  owner_workspace_id,
+  metadata
+)
+values
+  (
+    '20000000-0000-4000-8000-000000000001',
+    'accelerate-core-global',
+    'Accelerate Core Global',
+    'Default global dataset visible to every authenticated user.',
+    'global',
+    true,
+    null,
+    '{"seedCategory":"global"}'::jsonb
+  ),
+  (
+    '20000000-0000-4000-8000-000000000002',
+    'workspace-a-portfolio',
+    'Workspace A Portfolio',
+    'Workspace-scoped dataset owned by Workspace A.',
+    'workspace',
+    false,
+    '10000000-0000-4000-8000-000000000001',
+    '{"seedCategory":"workspace"}'::jsonb
+  ),
+  (
+    '20000000-0000-4000-8000-000000000003',
+    'executive-private-list',
+    'Executive Private List',
+    'Private dataset available only through explicit grants and admin access.',
+    'private',
+    false,
+    null,
+    '{"seedCategory":"private"}'::jsonb
+  ),
+  (
+    '20000000-0000-4000-8000-000000000004',
+    'shared-market-map',
+    'Shared Market Map',
+    'Shared dataset owned by Workspace A and granted to Workspace B.',
+    'shared',
+    false,
+    '10000000-0000-4000-8000-000000000001',
+    '{"seedCategory":"shared"}'::jsonb
+  ),
+  (
+    '20000000-0000-4000-8000-000000000005',
+    'workspace-a-combined-signals',
+    'Workspace A Combined Signals',
+    'Merged dataset output owned by Workspace A and shared to Workspace B.',
+    'shared',
+    false,
+    '10000000-0000-4000-8000-000000000001',
+    '{"seedCategory":"merged"}'::jsonb
+  );
+
+insert into public.dataset_versions (
+  id,
+  dataset_id,
+  version_number,
+  column_definitions,
+  row_count,
+  source_ref,
+  metadata,
+  notes,
+  change_summary,
+  published_at,
+  published_by
+)
+values
+  (
+    '30000000-0000-4000-8000-000000000001',
+    '20000000-0000-4000-8000-000000000001',
+    1,
+    '{
+      "columns": [
+        {
+          "key": "pipeline_row_id",
+          "label": "Row ID",
+          "dataType": "text",
+          "source": "pipeline_row_id",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "system"
+        },
+        {
+          "key": "company_name",
+          "label": "Company",
+          "dataType": "text",
+          "source": "attributes.company_name",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        }
+      ]
+    }'::jsonb,
+    2,
+    'seed/global.csv',
+    '{"seedCategory":"global"}'::jsonb,
+    'Initial global catalog seed.',
+    'Bootstrapped the default global dataset for early browsing.',
+    '2026-03-05T09:00:00+00'::timestamptz,
+    '11111111-1111-4111-8111-111111111111'
+  ),
+  (
+    '30000000-0000-4000-8000-000000000002',
+    '20000000-0000-4000-8000-000000000002',
+    1,
+    '{
+      "columns": [
+        {
+          "key": "pipeline_row_id",
+          "label": "Row ID",
+          "dataType": "text",
+          "source": "pipeline_row_id",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "system"
+        },
+        {
+          "key": "account_name",
+          "label": "Account",
+          "dataType": "text",
+          "source": "attributes.account_name",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        }
+      ]
+    }'::jsonb,
+    2,
+    'seed/workspace-a.csv',
+    '{"seedCategory":"workspace"}'::jsonb,
+    'Workspace A starter portfolio snapshot.',
+    'Captured the first workspace-owned account slice.',
+    '2026-03-06T09:00:00+00'::timestamptz,
+    '11111111-1111-4111-8111-111111111111'
+  ),
+  (
+    '30000000-0000-4000-8000-000000000003',
+    '20000000-0000-4000-8000-000000000003',
+    1,
+    '{
+      "columns": [
+        {
+          "key": "pipeline_row_id",
+          "label": "Row ID",
+          "dataType": "text",
+          "source": "pipeline_row_id",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "system"
+        },
+        {
+          "key": "contact_name",
+          "label": "Contact",
+          "dataType": "text",
+          "source": "attributes.contact_name",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        }
+      ]
+    }'::jsonb,
+    1,
+    'seed/private.csv',
+    '{"seedCategory":"private"}'::jsonb,
+    'Private executive contact seed.',
+    'Created the first direct-grant-only dataset.',
+    '2026-03-07T09:00:00+00'::timestamptz,
+    '11111111-1111-4111-8111-111111111111'
+  ),
+  (
+    '30000000-0000-4000-8000-000000000004',
+    '20000000-0000-4000-8000-000000000004',
+    1,
+    '{
+      "columns": [
+        {
+          "key": "pipeline_row_id",
+          "label": "Row ID",
+          "dataType": "text",
+          "source": "pipeline_row_id",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "system"
+        },
+        {
+          "key": "market_name",
+          "label": "Market",
+          "dataType": "text",
+          "source": "attributes.market_name",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        }
+      ]
+    }'::jsonb,
+    2,
+    'seed/shared.csv',
+    '{"seedCategory":"shared"}'::jsonb,
+    'Shared market reference seed.',
+    'Enabled the first workspace-to-workspace shared dataset.',
+    '2026-03-08T09:00:00+00'::timestamptz,
+    '11111111-1111-4111-8111-111111111111'
+  ),
+  (
+    '30000000-0000-4000-8000-000000000005',
+    '20000000-0000-4000-8000-000000000005',
+    1,
+    '{
+      "columns": [
+        {
+          "key": "pipeline_row_id",
+          "label": "Row ID",
+          "dataType": "text",
+          "source": "pipeline_row_id",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "system"
+        },
+        {
+          "key": "account_name",
+          "label": "Account",
+          "dataType": "text",
+          "source": "attributes.account_name",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        },
+        {
+          "key": "market_name",
+          "label": "Market",
+          "dataType": "text",
+          "source": "attributes.market_name",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        }
+      ]
+    }'::jsonb,
+    2,
+    'seed/workspace-a-combined-signals.csv',
+    '{"seedCategory":"merged"}'::jsonb,
+    'Initial merged signal rollup.',
+    'Published the first combined view from workspace and shared sources.',
+    '2026-03-09T09:00:00+00'::timestamptz,
+    '11111111-1111-4111-8111-111111111111'
+  ),
+  (
+    '30000000-0000-4000-8000-000000000006',
+    '20000000-0000-4000-8000-000000000005',
+    2,
+    '{
+      "columns": [
+        {
+          "key": "pipeline_row_id",
+          "label": "Row ID",
+          "dataType": "text",
+          "source": "pipeline_row_id",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "system"
+        },
+        {
+          "key": "account_name",
+          "label": "Account",
+          "dataType": "text",
+          "source": "attributes.account_name",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        },
+        {
+          "key": "market_name",
+          "label": "Market",
+          "dataType": "text",
+          "source": "attributes.market_name",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        },
+        {
+          "key": "priority_signal",
+          "label": "Priority signal",
+          "dataType": "text",
+          "source": "attributes.priority_signal",
+          "sortable": true,
+          "filterable": true,
+          "searchable": true,
+          "kind": "attribute"
+        }
+      ]
+    }'::jsonb,
+    3,
+    'seed/workspace-a-combined-signals-v2.csv',
+    '{"seedCategory":"merged","supportsRowLineage":true}'::jsonb,
+    'Adds stronger operator notes and row-level upstream references.',
+    'Expanded the merged signal dataset with a priority signal column and one new combined row.',
+    '2026-03-10T11:00:00+00'::timestamptz,
+    '11111111-1111-4111-8111-111111111111'
+  );
+
+update public.datasets
+set active_version_id = '30000000-0000-4000-8000-000000000001'
+where id = '20000000-0000-4000-8000-000000000001';
+
+update public.datasets
+set active_version_id = '30000000-0000-4000-8000-000000000002'
+where id = '20000000-0000-4000-8000-000000000002';
+
+update public.datasets
+set active_version_id = '30000000-0000-4000-8000-000000000003'
+where id = '20000000-0000-4000-8000-000000000003';
+
+update public.datasets
+set active_version_id = '30000000-0000-4000-8000-000000000004'
+where id = '20000000-0000-4000-8000-000000000004';
+
+update public.datasets
+set active_version_id = '30000000-0000-4000-8000-000000000006'
+where id = '20000000-0000-4000-8000-000000000005';
+
+insert into public.dataset_version_sources (
+  id,
+  dataset_version_id,
+  source_dataset_version_id,
+  relation_type
+)
+values
+  (
+    '60000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000002',
+    'merged_from'
+  ),
+  (
+    '60000000-0000-4000-8000-000000000002',
+    '30000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000004',
+    'merged_from'
+  ),
+  (
+    '60000000-0000-4000-8000-000000000003',
+    '30000000-0000-4000-8000-000000000006',
+    '30000000-0000-4000-8000-000000000002',
+    'merged_from'
+  ),
+  (
+    '60000000-0000-4000-8000-000000000004',
+    '30000000-0000-4000-8000-000000000006',
+    '30000000-0000-4000-8000-000000000004',
+    'merged_from'
+  );
+
+insert into public.dataset_rows (
+  id,
+  dataset_version_id,
+  pipeline_row_id,
+  row_index,
+  attributes,
+  lineage
+)
+values
+  (
+    '40000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000001',
+    'global-1',
+    1,
+    '{"company_name":"Acme Cloud","country":"US"}'::jsonb,
+    '{"ingestedFrom":"seed/global.csv"}'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000002',
+    '30000000-0000-4000-8000-000000000001',
+    'global-2',
+    2,
+    '{"company_name":"Northwind Data","country":"CA"}'::jsonb,
+    '{"ingestedFrom":"seed/global.csv"}'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000003',
+    '30000000-0000-4000-8000-000000000002',
+    'workspace-a-1',
+    1,
+    '{"account_name":"Apex Manufacturing","segment":"Enterprise"}'::jsonb,
+    '{"ingestedFrom":"seed/workspace-a.csv"}'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000004',
+    '30000000-0000-4000-8000-000000000002',
+    'workspace-a-2',
+    2,
+    '{"account_name":"Pioneer Logistics","segment":"Mid-market"}'::jsonb,
+    '{"ingestedFrom":"seed/workspace-a.csv"}'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000003',
+    'private-1',
+    1,
+    '{"contact_name":"Jordan Lee","priority":"High"}'::jsonb,
+    '{"ingestedFrom":"seed/private.csv"}'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000006',
+    '30000000-0000-4000-8000-000000000004',
+    'shared-1',
+    1,
+    '{"market_name":"Nordics","status":"Active"}'::jsonb,
+    '{"ingestedFrom":"seed/shared.csv"}'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000007',
+    '30000000-0000-4000-8000-000000000004',
+    'shared-2',
+    2,
+    '{"market_name":"DACH","status":"Pilot"}'::jsonb,
+    '{"ingestedFrom":"seed/shared.csv"}'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000008',
+    '30000000-0000-4000-8000-000000000005',
+    'combined-1',
+    1,
+    '{"account_name":"Apex Manufacturing","market_name":"Nordics","status":"Active"}'::jsonb,
+    '{"ingestedFrom":"seed/workspace-a-combined-signals.csv"}'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000009',
+    '30000000-0000-4000-8000-000000000005',
+    'combined-2',
+    2,
+    '{"account_name":"Pioneer Logistics","market_name":"DACH","status":"Pilot"}'::jsonb,
+    '{"ingestedFrom":"seed/workspace-a-combined-signals.csv"}'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000010',
+    '30000000-0000-4000-8000-000000000006',
+    'combined-1',
+    1,
+    '{"account_name":"Apex Manufacturing","market_name":"Nordics","priority_signal":"Hot"}'::jsonb,
+    '{
+      "ingestedFrom":"seed/workspace-a-combined-signals-v2.csv",
+      "upstreamRows": [
+        {
+          "datasetVersionId": "30000000-0000-4000-8000-000000000002",
+          "pipelineRowId": "workspace-a-1"
+        },
+        {
+          "datasetVersionId": "30000000-0000-4000-8000-000000000004",
+          "pipelineRowId": "shared-1"
+        }
+      ]
+    }'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000011',
+    '30000000-0000-4000-8000-000000000006',
+    'combined-2',
+    2,
+    '{"account_name":"Pioneer Logistics","market_name":"DACH","priority_signal":"Warm"}'::jsonb,
+    '{
+      "ingestedFrom":"seed/workspace-a-combined-signals-v2.csv",
+      "upstreamRows": [
+        {
+          "datasetVersionId": "30000000-0000-4000-8000-000000000002",
+          "pipelineRowId": "workspace-a-2"
+        },
+        {
+          "datasetVersionId": "30000000-0000-4000-8000-000000000004",
+          "pipelineRowId": "shared-2"
+        }
+      ]
+    }'::jsonb
+  ),
+  (
+    '40000000-0000-4000-8000-000000000012',
+    '30000000-0000-4000-8000-000000000006',
+    'combined-3',
+    3,
+    '{"account_name":"Summit Retail","market_name":"Benelux","priority_signal":"Watch"}'::jsonb,
+    '{"ingestedFrom":"seed/workspace-a-combined-signals-v2.csv"}'::jsonb
+  );
+
+insert into public.dataset_access (
+  dataset_id,
+  user_id,
+  workspace_id,
+  granted_by
+)
+values
+  (
+    '20000000-0000-4000-8000-000000000003',
+    '55555555-5555-4555-8555-555555555555',
+    null,
+    '11111111-1111-4111-8111-111111111111'
+  ),
+  (
+    '20000000-0000-4000-8000-000000000004',
+    null,
+    '10000000-0000-4000-8000-000000000002',
+    '11111111-1111-4111-8111-111111111111'
+  ),
+  (
+    '20000000-0000-4000-8000-000000000005',
+    null,
+    '10000000-0000-4000-8000-000000000002',
+    '11111111-1111-4111-8111-111111111111'
+  ),
+  (
+    '20000000-0000-4000-8000-000000000004',
+    '55555555-5555-4555-8555-555555555555',
+    null,
+    '11111111-1111-4111-8111-111111111111'
+  );
+
+insert into public.dataset_version_events (
+  id,
+  dataset_id,
+  dataset_version_id,
+  previous_dataset_version_id,
+  event_type,
+  actor_user_id,
+  metadata,
+  created_at
+)
+values
+  (
+    '70000000-0000-4000-8000-000000000001',
+    '20000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000001',
+    null,
+    'published',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-05T09:00:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000002',
+    '20000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000001',
+    null,
+    'activated',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-05T09:05:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000003',
+    '20000000-0000-4000-8000-000000000002',
+    '30000000-0000-4000-8000-000000000002',
+    null,
+    'published',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-06T09:00:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000004',
+    '20000000-0000-4000-8000-000000000002',
+    '30000000-0000-4000-8000-000000000002',
+    null,
+    'activated',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-06T09:05:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000005',
+    '20000000-0000-4000-8000-000000000003',
+    '30000000-0000-4000-8000-000000000003',
+    null,
+    'published',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-07T09:00:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000006',
+    '20000000-0000-4000-8000-000000000003',
+    '30000000-0000-4000-8000-000000000003',
+    null,
+    'activated',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-07T09:05:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000007',
+    '20000000-0000-4000-8000-000000000004',
+    '30000000-0000-4000-8000-000000000004',
+    null,
+    'published',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-08T09:00:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000008',
+    '20000000-0000-4000-8000-000000000004',
+    '30000000-0000-4000-8000-000000000004',
+    null,
+    'activated',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-08T09:05:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000009',
+    '20000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000005',
+    null,
+    'published',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-09T09:00:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000010',
+    '20000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000005',
+    null,
+    'activated',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true}'::jsonb,
+    '2026-03-09T09:05:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000011',
+    '20000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000006',
+    '30000000-0000-4000-8000-000000000005',
+    'published',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true,"reason":"promoted comparison-ready merged version"}'::jsonb,
+    '2026-03-10T11:00:00+00'::timestamptz
+  ),
+  (
+    '70000000-0000-4000-8000-000000000012',
+    '20000000-0000-4000-8000-000000000005',
+    '30000000-0000-4000-8000-000000000006',
+    '30000000-0000-4000-8000-000000000005',
+    'activated',
+    '11111111-1111-4111-8111-111111111111',
+    '{"seeded":true,"reason":"promoted comparison-ready merged version"}'::jsonb,
+    '2026-03-10T11:05:00+00'::timestamptz
+  );
+
+insert into public.invites (
+  id,
+  email,
+  token_hash,
+  status,
+  expires_at,
+  accepted_at,
+  created_by,
+  metadata
+)
+values
+  (
+    '50000000-0000-4000-8000-000000000001',
+    'future-member@accelerate.test',
+    'seed-invite-token-hash',
+    'pending',
+    timezone('utc', now()) + interval '7 days',
+    null,
+    '11111111-1111-4111-8111-111111111111',
+    '{"seedPurpose":"phase-3-validation"}'::jsonb
+  );

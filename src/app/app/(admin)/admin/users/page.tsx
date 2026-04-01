@@ -1,11 +1,14 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { AdminUsersPageView } from "@/features/admin/users/page";
+import { loadAdminUsersPage } from "@/features/admin/users/server";
 
-export default function AdminUsersPage() {
-  return (
-    <PlaceholderPage
-      description="Administrators will manage user accounts, lifecycle changes, and membership from this page."
-      title="Users"
-      zone="Admin"
-    />
-  );
+interface AdminUsersPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function AdminUsersPage({
+  searchParams,
+}: AdminUsersPageProps) {
+  const pageData = await loadAdminUsersPage(await searchParams);
+
+  return <AdminUsersPageView {...pageData} />;
 }

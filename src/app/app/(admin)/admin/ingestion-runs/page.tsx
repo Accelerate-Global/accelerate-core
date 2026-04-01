@@ -1,11 +1,8 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { AdminOversightPageView } from "@/features/admin/operations/page";
+import { loadAdminOversightPage } from "@/features/admin/operations/server";
 
-export default function AdminIngestionRunsPage() {
-  return (
-    <PlaceholderPage
-      description="Ingestion run history and troubleshooting details will help admins monitor data intake jobs."
-      title="Ingestion Runs"
-      zone="Admin"
-    />
-  );
+export default async function AdminIngestionRunsPage() {
+  const pageData = await loadAdminOversightPage("ingestion-runs");
+
+  return <AdminOversightPageView {...pageData} />;
 }

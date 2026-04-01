@@ -1,11 +1,14 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { AdminDatasetsPageView } from "@/features/admin/datasets/page";
+import { loadAdminDatasetsPage } from "@/features/admin/datasets/server";
 
-export default function AdminDatasetsPage() {
-  return (
-    <PlaceholderPage
-      description="Admins will govern dataset catalog configuration, visibility, and operational metadata here."
-      title="Datasets"
-      zone="Admin"
-    />
-  );
+interface AdminDatasetsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function AdminDatasetsPage({
+  searchParams,
+}: AdminDatasetsPageProps) {
+  const pageData = await loadAdminDatasetsPage(await searchParams);
+
+  return <AdminDatasetsPageView {...pageData} />;
 }

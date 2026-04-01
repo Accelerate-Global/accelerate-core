@@ -1,11 +1,14 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { AdminPermissionsPageView } from "@/features/admin/permissions/page";
+import { loadAdminPermissionsPage } from "@/features/admin/permissions/server";
 
-export default function AdminPermissionsPage() {
-  return (
-    <PlaceholderPage
-      description="Role assignments and dataset access policies will be configured from the permissions console."
-      title="Permissions"
-      zone="Admin"
-    />
-  );
+interface AdminPermissionsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function AdminPermissionsPage({
+  searchParams,
+}: AdminPermissionsPageProps) {
+  const pageData = await loadAdminPermissionsPage(await searchParams);
+
+  return <AdminPermissionsPageView {...pageData} />;
 }

@@ -1,36 +1,14 @@
-import { AccessDeniedState } from "@/components/feedback/access-denied-state";
-import { ErrorState } from "@/components/feedback/error-state";
-import { requireAdmin } from "@/lib/auth";
-import type { Invite } from "@/lib/invite/types";
-import { createClient } from "@/lib/supabase/server";
+import { AdminInvitesPageView } from "@/features/admin/invites/page";
+import { loadAdminInvitesPage } from "@/features/admin/invites/server";
 
-import { InviteForm } from "./invite-form";
-import { InviteList } from "./invite-list";
+interface AdminInvitesPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
-export default async function AdminInvitesPage() {
-  if (!(await requireAdmin())) {
-    return <AccessDeniedState />;
-  }
+export default async function AdminInvitesPage({
+  searchParams,
+}: AdminInvitesPageProps) {
+  const pageData = await loadAdminInvitesPage(await searchParams);
 
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("invites")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    return <ErrorState description="We couldn’t load invites right now." />;
-  }
-
-  const invites = (data ?? []) as Invite[];
-
-  return (
-    <div className="space-y-8">
-      <InviteForm />
-      <section className="space-y-4">
-        <h3 className="font-semibold text-lg tracking-tight">Invites</h3>
-        <InviteList invites={invites} />
-      </section>
-    </div>
-  );
+  return <AdminInvitesPageView {...pageData} />;
 }

@@ -1,100 +1,110 @@
-import type { LucideIcon } from "lucide-react";
-import {
-  ArrowDownToLine,
-  Briefcase,
-  Database,
-  GitBranch,
-  House,
-  KeyRound,
-  LayoutDashboard,
-  MailPlus,
-  PlugZap,
-  Send,
-  Shield,
-  UserRound,
-  Users,
-} from "lucide-react";
-
 import { type AppRoute, routes } from "@/lib/routes";
 
-interface ShellNavItem {
+export type ShellNavIcon =
+  | "admin"
+  | "apis"
+  | "back"
+  | "datasets"
+  | "home"
+  | "ingestion-runs"
+  | "invites"
+  | "overview"
+  | "permissions"
+  | "pipeline-runs"
+  | "profile"
+  | "publishing"
+  | "users"
+  | "workspace";
+
+export interface ShellNavItem {
   href: AppRoute;
-  icon: LucideIcon;
+  icon: ShellNavIcon;
   label: string;
 }
 
-export const productNavItems = [
+const baseProductNavItems = [
   {
     href: routes.appHome,
-    icon: House,
+    icon: "home",
     label: "Home",
   },
   {
     href: routes.datasets,
-    icon: Database,
+    icon: "datasets",
     label: "Datasets",
   },
   {
     href: routes.workspace,
-    icon: Briefcase,
+    icon: "workspace",
     label: "Workspace",
   },
   {
     href: routes.profile,
-    icon: UserRound,
+    icon: "profile",
     label: "Profile",
   },
-  {
-    href: routes.adminHome,
-    icon: Shield,
-    label: "Admin",
-  },
 ] as const satisfies readonly ShellNavItem[];
+
+const productAdminNavItem = {
+  href: routes.adminHome,
+  icon: "admin",
+  label: "Admin",
+} as const satisfies ShellNavItem;
+
+export const getProductNavItems = (
+  showAdminEntry: boolean
+): readonly ShellNavItem[] => {
+  if (!showAdminEntry) {
+    return baseProductNavItems;
+  }
+
+  return [...baseProductNavItems, productAdminNavItem];
+};
 
 export const adminNavItems = [
   {
     href: routes.adminHome,
-    icon: LayoutDashboard,
+    icon: "overview",
     label: "Overview",
   },
   {
     href: routes.adminUsers,
-    icon: Users,
+    icon: "users",
     label: "Users",
   },
   {
     href: routes.adminInvites,
-    icon: MailPlus,
+    icon: "invites",
     label: "Invites",
   },
   {
     href: routes.adminPermissions,
-    icon: KeyRound,
+    icon: "permissions",
     label: "Permissions",
   },
   {
     href: routes.adminDatasets,
-    icon: Database,
+    icon: "datasets",
     label: "Datasets",
   },
   {
     href: routes.adminApis,
-    icon: PlugZap,
+    icon: "apis",
     label: "APIs",
   },
   {
     href: routes.adminIngestionRuns,
-    icon: ArrowDownToLine,
+    icon: "ingestion-runs",
     label: "Ingestion Runs",
   },
   {
     href: routes.adminPipelineRuns,
-    icon: GitBranch,
+    icon: "pipeline-runs",
     label: "Pipeline Runs",
   },
   {
     href: routes.adminPublishing,
-    icon: Send,
+    icon: "publishing",
     label: "Publishing",
   },
 ] as const satisfies readonly ShellNavItem[];

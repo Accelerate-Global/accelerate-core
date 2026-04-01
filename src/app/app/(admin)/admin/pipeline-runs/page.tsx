@@ -1,11 +1,8 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { AdminOversightPageView } from "@/features/admin/operations/page";
+import { loadAdminOversightPage } from "@/features/admin/operations/server";
 
-export default function AdminPipelineRunsPage() {
-  return (
-    <PlaceholderPage
-      description="Pipeline run status, diagnostics, and outcomes will be available for admin review here."
-      title="Pipeline Runs"
-      zone="Admin"
-    />
-  );
+export default async function AdminPipelineRunsPage() {
+  const pageData = await loadAdminOversightPage("pipeline-runs");
+
+  return <AdminOversightPageView {...pageData} />;
 }

@@ -1,11 +1,14 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { AdminPublishingPageView } from "@/features/admin/publishing/page";
+import { loadAdminPublishingPage } from "@/features/admin/publishing/server";
 
-export default function AdminPublishingPage() {
-  return (
-    <PlaceholderPage
-      description="Publishing workflows will let administrators control releases and dataset availability."
-      title="Publishing"
-      zone="Admin"
-    />
-  );
+interface AdminPublishingPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function AdminPublishingPage({
+  searchParams,
+}: AdminPublishingPageProps) {
+  const pageData = await loadAdminPublishingPage(await searchParams);
+
+  return <AdminPublishingPageView {...pageData} />;
 }

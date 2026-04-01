@@ -5,6 +5,7 @@ node_modules
 dist
 .next
 .turbo
+.tmp
 *.tsbuildinfo
 
 # Env (do not commit secrets)
@@ -21,3 +22,12 @@ npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.vercel
+.env*.local
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

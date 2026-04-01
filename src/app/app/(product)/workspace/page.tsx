@@ -1,11 +1,14 @@
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { WorkspacePageView } from "@/features/workspaces/page";
+import { loadWorkspacePage } from "@/features/workspaces/server";
 
-export default function WorkspacePage() {
-  return (
-    <PlaceholderPage
-      description="Workspace settings and collaboration controls will live here for the core product experience."
-      title="Workspace"
-      zone="Product"
-    />
-  );
+interface WorkspacePageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function WorkspacePage({
+  searchParams,
+}: WorkspacePageProps) {
+  const pageData = await loadWorkspacePage(await searchParams);
+
+  return <WorkspacePageView {...pageData} />;
 }

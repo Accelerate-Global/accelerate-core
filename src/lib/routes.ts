@@ -29,7 +29,7 @@ const routeTitles = {
   [routes.login]: "Login",
   [routes.invite]: "Accept Invite",
   [routes.authCallback]: "Auth Callback",
-  [routes.authSetupIncomplete]: "Account Setup Incomplete",
+  [routes.authSetupIncomplete]: "Setup Incomplete",
   [routes.appHome]: "Home",
   [routes.datasets]: "Datasets",
   [routes.datasetDetail]: "Dataset",
@@ -131,7 +131,7 @@ export const getTopbarTitle = (pathname: string): string => {
   const zone = getRouteZone(pathname);
 
   if (zone === "Admin") {
-    return `Admin — ${title}`;
+    return `Admin / ${title}`;
   }
 
   return title;
