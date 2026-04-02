@@ -89,9 +89,9 @@ const LoginStatusPanel = ({ status }: LoginStatusPanelProps) => {
           )}
         </div>
         <div className="space-y-2">
-          <h2 className="font-medium text-base tracking-tight">
+          <h3 className="font-medium text-base tracking-tight">
             {isSuccess ? "Check your email" : "We couldn’t start sign-in"}
-          </h2>
+          </h3>
           <p className="text-sm leading-6">
             {isSuccess
               ? "If the address is authorized, a one-time sign-in link is on the way. Give it a minute, and check spam or promotions if it does not appear."
@@ -153,9 +153,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               className="rounded-2xl border border-[#262531]/10 bg-[#f7f6ef]/80 p-4"
               key={note.title}
             >
-              <h2 className="font-medium text-[#262531] text-sm uppercase tracking-[0.12em]">
+              <h3 className="font-medium text-[#262531] text-sm uppercase tracking-[0.12em]">
                 {note.title}
-              </h2>
+              </h3>
               <p className="mt-2 text-[#262531]/68 text-sm leading-6">
                 {note.description}
               </p>

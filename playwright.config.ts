@@ -4,6 +4,18 @@ const webServerPort = 3000;
 const webServerHost = "127.0.0.1";
 const webServerUrl = `http://${webServerHost}:${webServerPort}`;
 
+const getRequiredEnv = (name: string): string => {
+  const value = process.env[name];
+
+  if (value) {
+    return value;
+  }
+
+  throw new Error(
+    `${name} is required for Playwright local auth. Run \`supabase status\` to retrieve your local key and store it in a gitignored .env.test.local file.`
+  );
+};
+
 const localAuthEnv = {
   NEXT_PUBLIC_APP_URL:
     process.env.PLAYWRIGHT_NEXT_PUBLIC_APP_URL ?? webServerUrl,
@@ -12,9 +24,9 @@ const localAuthEnv = {
     "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH",
   NEXT_PUBLIC_SUPABASE_URL:
     process.env.PLAYWRIGHT_NEXT_PUBLIC_SUPABASE_URL ?? "http://127.0.0.1:54321",
-  SUPABASE_SERVICE_ROLE_KEY:
-    process.env.PLAYWRIGHT_SUPABASE_SERVICE_ROLE_KEY ??
-    "sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz",
+  SUPABASE_SERVICE_ROLE_KEY: getRequiredEnv(
+    "PLAYWRIGHT_SUPABASE_SERVICE_ROLE_KEY"
+  ),
 } as const;
 
 /**

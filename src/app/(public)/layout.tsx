@@ -58,9 +58,9 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                   className="rounded-2xl border border-[#f7f6ef]/10 bg-[#f7f6ef]/8 p-5"
                   key={highlight.title}
                 >
-                  <h2 className="font-medium text-lg tracking-tight">
+                  <h3 className="font-medium text-lg tracking-tight">
                     {highlight.title}
-                  </h2>
+                  </h3>
                   <p className="mt-2 text-[#f7f6ef]/72 text-sm leading-6">
                     {highlight.description}
                   </p>

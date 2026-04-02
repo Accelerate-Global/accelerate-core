@@ -35,7 +35,7 @@ supabase status
 supabase db reset
 NEXT_PUBLIC_SUPABASE_URL="http://127.0.0.1:54321" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH" \
-SUPABASE_SERVICE_ROLE_KEY="sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz" \
+SUPABASE_SERVICE_ROLE_KEY="<local service role key from supabase status>" \
 NEXT_PUBLIC_APP_URL="http://localhost:3000" \
 npm run dev -- --port 3000
 ```
@@ -109,7 +109,7 @@ Used local SQL-only QA fixtures in local Supabase (not product code):
 ```sh
 supabase status
 supabase db reset
-NEXT_PUBLIC_SUPABASE_URL="http://127.0.0.1:54321" NEXT_PUBLIC_SUPABASE_ANON_KEY="sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH" SUPABASE_SERVICE_ROLE_KEY="sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz" NEXT_PUBLIC_APP_URL="http://localhost:3000" npm run dev -- --port 3000
+NEXT_PUBLIC_SUPABASE_URL="http://127.0.0.1:54321" NEXT_PUBLIC_SUPABASE_ANON_KEY="sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH" SUPABASE_SERVICE_ROLE_KEY="<local service role key from supabase status>" NEXT_PUBLIC_APP_URL="http://localhost:3000" npm run dev -- --port 3000
 
 # local fixture setup/teardown and targeted checks
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" ...
