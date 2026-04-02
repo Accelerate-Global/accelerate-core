@@ -255,7 +255,7 @@ const getGoogleWorkspaceConfig = (): GoogleWorkspaceConfig => {
     );
   }
 
-  if (!serviceAccountJson || !spreadsheetId) {
+  if (!(serviceAccountJson && spreadsheetId)) {
     throw new Error("Expected Google Workspace configuration to be present.");
   }
 
