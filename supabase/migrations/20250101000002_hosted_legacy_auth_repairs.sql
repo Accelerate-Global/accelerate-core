@@ -1,0 +1,5 @@
+-- Hosted legacy auth repair placeholder.
+--
+-- The linked production Supabase project already records this version as
+-- applied. Keep this file as a no-op marker so repo-tracked migrations can be
+-- reconciled against the hosted migration history safely.
