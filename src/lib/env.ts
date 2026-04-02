@@ -82,6 +82,10 @@ let cachedClientEnv: ClientEnv | null = null;
 let cachedServerEnv: ServerEnv | null = null;
 let cachedAppUrl: string | null = null;
 
+const getExplicitAppUrl = (): string | undefined => {
+  return process.env.NEXT_PUBLIC_APP_URL?.trim();
+};
+
 const normalizeAppUrl = (value: string): string => {
   if (value.startsWith("http://") || value.startsWith("https://")) {
     return value;
@@ -90,14 +94,14 @@ const normalizeAppUrl = (value: string): string => {
   return `https://${value}`;
 };
 
-const getVercelAppUrl = (): string | null => {
-  const vercelProductionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+/**
+ * Non-production convenience fallback only. In production, require
+ * `NEXT_PUBLIC_APP_URL` explicitly so auth redirects and invite links stay on the
+ * canonical public domain instead of drifting to preview or deployment hosts.
+ */
+const getNonProductionVercelAppUrl = (): string | null => {
   const vercelBranchUrl = process.env.VERCEL_BRANCH_URL?.trim();
   const vercelUrl = process.env.VERCEL_URL?.trim();
-
-  if (process.env.VERCEL_ENV === "production" && vercelProductionUrl) {
-    return normalizeAppUrl(vercelProductionUrl);
-  }
 
   if (vercelBranchUrl) {
     return normalizeAppUrl(vercelBranchUrl);
@@ -108,6 +112,18 @@ const getVercelAppUrl = (): string | null => {
   }
 
   return null;
+};
+
+const getRequiredProductionAppUrl = (): string => {
+  const explicitAppUrl = getExplicitAppUrl();
+
+  if (!explicitAppUrl) {
+    throw new Error(
+      "NEXT_PUBLIC_APP_URL must be set to the canonical production origin when VERCEL_ENV=production."
+    );
+  }
+
+  return appUrlSchema.parse(explicitAppUrl);
 };
 
 export const getClientEnv = (): ClientEnv => {
@@ -127,9 +143,15 @@ export const getServerEnv = (): ServerEnv => {
 };
 
 export const getAppUrl = (): string => {
+  if (process.env.VERCEL_ENV === "production") {
+    cachedAppUrl ??= getRequiredProductionAppUrl();
+
+    return cachedAppUrl;
+  }
+
   cachedAppUrl ??= appUrlSchema.parse(
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-      getVercelAppUrl() ||
+    getExplicitAppUrl() ||
+      getNonProductionVercelAppUrl() ||
       "http://localhost:3000"
   );
 

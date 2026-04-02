@@ -25,13 +25,46 @@ What it does not implement yet:
 - `npm run check` runs Ultracite checks.
 - `npm run fix` applies Ultracite fixes.
 
+## Google Workspace Connector
+
+Phase A adds a read-only Google Workspace validation path on
+`/app/admin/apis`.
+
+Setup steps:
+
+1. Create or select a Google Cloud project for the integration.
+2. Enable both Google Sheets API and Google Drive API.
+3. Create a Google service account.
+4. Download the service account JSON credentials.
+5. Store the full JSON document in
+   `GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON`.
+6. Share the target spreadsheet with the service account email as a
+   `Viewer`.
+7. Set `GOOGLE_WORKSPACE_SOURCE_SPREADSHEET_ID`.
+8. Optionally set `GOOGLE_WORKSPACE_SOURCE_SHEET_NAME`.
+9. Optionally set `GOOGLE_WORKSPACE_SOURCE_RANGE`.
+10. Set the Google Workspace env vars in local development and in Vercel
+    preview and production.
+11. Validate the connection from `/app/admin/apis` as an admin user.
+
+Notes:
+
+- The Google credentials stay server-only and must never be exposed to the
+  browser.
+- The current integration validates one configured spreadsheet only.
+- The current integration is read-only and does not write back to Google.
+
 ## Manual Follow-Up
 
 - Create the Supabase project.
 - Copy the Supabase URL, anon key, and service role key into local environment variables.
 - Set the Supabase environment variables in Vercel preview and production.
-- Keep `NEXT_PUBLIC_APP_URL=http://localhost:3000` locally. On Vercel, this repo can derive the deployed app URL from Vercel system environment variables when your preview and production domains are configured.
-- Connect the repo to Vercel and verify a preview deployment.
+- Keep `NEXT_PUBLIC_APP_URL=http://localhost:3000` locally.
+- In Vercel production, set `NEXT_PUBLIC_APP_URL=https://data.accelerateglobal.org`.
+- Do not rely on Vercel system URL variables for production auth redirects or invite links.
+- If preview auth testing is needed, prefer an explicit preview `NEXT_PUBLIC_APP_URL` over deployment-host fallback.
+- In the hosted Supabase Dashboard, configure Auth `site_url` and allowed redirect URLs for `https://data.accelerateglobal.org/auth/callback`.
+- Treat `supabase/config.toml` as local CLI-only config; it does not configure hosted Supabase Auth.
 
 ## Supabase CLI
 

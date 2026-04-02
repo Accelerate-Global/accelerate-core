@@ -50,6 +50,21 @@ const mapDatasetBrowserApiError = (
   throw error;
 };
 
+const getDatasetBrowserUnavailableMessage = (error: unknown): string => {
+  if (error instanceof DatasetBrowserApiError) {
+    return error.body?.message ?? "The dataset browser is unavailable.";
+  }
+
+  if (
+    error instanceof Error &&
+    error.message.includes("Could not find the table 'public.datasets'")
+  ) {
+    return "The hosted dataset backend is not provisioned for this environment yet.";
+  }
+
+  return "The dataset browser is temporarily unavailable.";
+};
+
 const loadDatasetBrowserReadyState = async (
   datasetId: string,
   searchParams: DatasetBrowserSearchParamsInput
@@ -97,7 +112,17 @@ export const loadDatasetDirectoryPage = async (): Promise<DatasetSummary[]> => {
 export const loadDatasetHomePage = async (
   searchParams: DatasetBrowserSearchParamsInput
 ): Promise<DatasetBrowserResolvedState> => {
-  const response = await fetchDatasetListServer();
+  let response: Awaited<ReturnType<typeof fetchDatasetListServer>>;
+
+  try {
+    response = await fetchDatasetListServer();
+  } catch (error) {
+    return {
+      message: getDatasetBrowserUnavailableMessage(error),
+      status: "unavailable",
+    };
+  }
+
   const homeDataset = findDatasetBrowserHomeDataset(response.datasets);
 
   if (!homeDataset) {

@@ -2,9 +2,9 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
-import { createClient, type User } from "@supabase/supabase-js";
+import type { User } from "@supabase/supabase-js";
 
-import { getAppUrl, getServerEnv } from "@/lib/env";
+import { getAppUrl } from "@/lib/env";
 import { routes } from "@/lib/routes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
@@ -35,21 +35,6 @@ const inviteSelect =
 
 const normalizeEmail = (value: string): string => {
   return value.trim().toLowerCase();
-};
-
-const buildAuthClient = () => {
-  const env = getServerEnv();
-
-  return createClient(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
 };
 
 const getInviteRole = (invite: Pick<InviteRecord, "metadata">): InviteRole => {
@@ -245,7 +230,7 @@ export const sendReturningUserMagicLink = async (
   email: string,
   shouldCreateUser = false
 ): Promise<void> => {
-  const authClient = buildAuthClient();
+  const authClient = await createServerSupabaseClient();
   const { error } = await authClient.auth.signInWithOtp({
     email: normalizeEmail(email),
     options: {

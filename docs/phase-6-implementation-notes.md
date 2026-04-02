@@ -105,7 +105,7 @@ instance.
 
 ## Repo Proof Commands
 
-- `PASS` `node scripts/phase6-nonadmin-mutation-proof.mjs`
+- `PASS` `SUPABASE_SERVICE_ROLE_KEY="<local service role key from supabase status>" node scripts/phase6-nonadmin-mutation-proof.mjs`
 - `PASS` `npm run check`
 - `PASS` `npm run build`
 

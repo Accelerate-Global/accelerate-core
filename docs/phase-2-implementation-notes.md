@@ -117,3 +117,57 @@ Deliver the minimum durable invite-only auth entry flow:
 - `npm run check`: PASS
 - `npm run build`: PASS
 - Browser E2E remediation matrix (signup-disabled posture): PASS (`phase2-security-validation:PASS`)
+
+## Hosted hardening follow-up (2026-04-01)
+
+Hosted verification target:
+
+- Vercel deployment: `accelerate-core-env-staging-accelerate-global.vercel.app`
+- Supabase project observed in auth links/runtime: `vopebyadvjdskmctxjhn` (`supabase-byzantium-pillow`)
+
+Hosted-only issues found:
+
+1. `public.ensure_invited_auth_user(text)` was missing in hosted DB.
+2. Legacy hosted `public.invites` schema drifted from current Phase 2 contract:
+   - had `invite_token_hash`/`invited_by`, but current app expects `token_hash`/`created_by`
+   - lacked `status` + `updated_at` used by invite resolution/finalization logic
+3. Function ACL drift existed (anon/authenticated execute was present in hosted ACL), violating intended service-role-only execution.
+
+Hosted fixes applied minimally:
+
+- Applied Phase 2 ensure-user function in hosted DB.
+- Repaired hosted invites schema to current contract via additive/rename-safe SQL.
+- Tightened function ACL to service-role-only execution.
+- Kept those hosted repairs out of repo migration history because the committed repo schema already reflects the intended end state.
+
+Mailbox-backed hosted rerun (`Blake@risencode.org`) findings:
+
+- Returning-user flow is now mailbox-proven:
+  - hosted `/login` send returned `303 -> /login?status=sent`
+  - callback reached hosted deployment
+  - authenticated entry to `/app` succeeded
+- A second hosted-only defect was found during callback finalization:
+  - hosted `public.profiles` schema drift (`id`/`full_name`/text `app_role`) was incompatible with current callback profile upsert path (`user_id`/`display_name`/enum `app_role`).
+- Minimal hosted fix applied directly in the hosted DB:
+  - compatibility backfill for `profiles`
+  - compatibility refresh for `handle_new_user`, `current_app_role`, and `is_admin`
+  - not retained as a repo migration because the committed repo schema already matches the target contract
+- Post-fix callback no longer routes to `/auth/setup-incomplete` for this returning-user path.
+- Ensure-user idempotency revalidated in hosted DB after rerun:
+  - repeated calls return same user id and keep single `auth.users` + single `auth.identities` row for the email.
+
+Remaining proof caveat:
+
+- First-time invited onboarding is still pending hosted mailbox proof because `Blake@risencode.org` is an already-existing user in hosted auth; a fresh authorized mailbox (or custom SMTP flow) is required to fully close that scenario.
+
+### Hosted magic-link redirect landed on Vercel login (`vercel.com/login?next=/sso-api...`)
+
+This is not Supabase “sending users to sign up for Vercel.” It is **Vercel Deployment Protection** intercepting the first unauthenticated request to your app’s `/auth/callback` when the magic link uses a **deployment hostname** that is protected (often the unique `*.vercel.app` URL from `VERCEL_URL`).
+
+Contributing factor: if `NEXT_PUBLIC_APP_URL` is unset on Vercel, `getAppUrl()` can fall back to `VERCEL_URL`, so `emailRedirectTo` in the magic link may point at a per-deployment host instead of your stable preview origin.
+
+Mitigations:
+
+1. Set `NEXT_PUBLIC_APP_URL` on Vercel to the canonical hosted origin (for example the stable preview URL like `https://accelerate-core-env-staging-accelerate-global.vercel.app`) and **redeploy** so server actions emit that origin in `buildAuthCallbackUrl()`.
+2. In Supabase Dashboard → Authentication → URL configuration, allow that same origin’s `/auth/callback` in redirect URLs.
+3. If `/auth/callback` is still blocked after (1)–(2), adjust **Deployment Protection** for the environment (for example relax protection on Preview, or follow Vercel guidance for protected previews) so unauthenticated OAuth/magic-link callbacks can reach the app once.
