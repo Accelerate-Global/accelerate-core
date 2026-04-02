@@ -4,6 +4,8 @@ import { requireCurrentUserAdmin } from "@/lib/auth/server";
 import { getExperimentFeatureFlags } from "@/lib/experiments/feature-flags";
 import { getTextToQueryStatus } from "@/lib/experiments/text-to-query/server";
 import type { TextToQueryStatus } from "@/lib/experiments/text-to-query/types";
+import type { GoogleWorkspaceSourceStatus } from "@/lib/sources/google-workspace/server";
+import { getSafeGoogleWorkspaceSourceStatus } from "@/lib/sources/google-workspace/server";
 import { getWarehouseAdapterStatus } from "@/lib/warehouse/server";
 import type { WarehouseAdapterStatus } from "@/lib/warehouse/types";
 
@@ -12,6 +14,7 @@ export interface AdminApisPageData {
     adminExperimentsEnabled: boolean;
     textToQueryEnabled: boolean;
   };
+  googleWorkspace: GoogleWorkspaceSourceStatus;
   manualPrerequisites: string[];
   textToQuery: Awaited<ReturnType<typeof getTextToQueryStatus>>;
   warehouse: Awaited<ReturnType<typeof getWarehouseAdapterStatus>>;
@@ -47,10 +50,12 @@ export const loadAdminApisPage = async (): Promise<AdminApisPageData> => {
   await requireCurrentUserAdmin();
   const featureFlags = getExperimentFeatureFlags();
 
-  const [warehouseStatus, textToQueryStatus] = await Promise.all([
-    getWarehouseAdapterStatus(),
-    getTextToQueryStatus(),
-  ]);
+  const [googleWorkspace, warehouseStatus, textToQueryStatus] =
+    await Promise.all([
+      getSafeGoogleWorkspaceSourceStatus(),
+      getWarehouseAdapterStatus(),
+      getTextToQueryStatus(),
+    ]);
   const warehouse = featureFlags.adminExperimentsEnabled
     ? warehouseStatus
     : getDisabledWarehouseStatus(
@@ -69,7 +74,9 @@ export const loadAdminApisPage = async (): Promise<AdminApisPageData> => {
 
   return {
     featureFlags,
+    googleWorkspace,
     manualPrerequisites: [
+      "Enable both Google Sheets API and Google Drive API, then share the target spreadsheet with the service account as a Viewer before validating Google Workspace access.",
       "Choose a warehouse provider and provision credentials outside the app.",
       "Choose a model provider and define evaluation criteria before enabling text-to-query experiments.",
       "Approve allowlisted datasets and columns through product and governance review before enabling any live experiment.",
