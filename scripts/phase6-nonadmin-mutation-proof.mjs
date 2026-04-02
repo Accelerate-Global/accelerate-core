@@ -7,9 +7,13 @@ const SUPABASE_URL =
 const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
   "sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH";
-const SUPABASE_SERVICE_ROLE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ??
-  "sb_secret_N7UND0UgjKTVK-Uodkm0Hg_xSvEMPvz";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error(
+    "SUPABASE_SERVICE_ROLE_KEY is required. Run `supabase status` to retrieve the local service role key and store it in a gitignored env file before running this proof script."
+  );
+}
 
 const ADMIN_CREDENTIALS = {
   email: "admin@accelerate.test",
