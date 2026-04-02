@@ -1,0 +1,5 @@
+-- Hosted legacy baseline placeholder.
+--
+-- The linked production Supabase project predates the repo-tracked 2026
+-- migration chain and already records this version as applied. This file is a
+-- no-op marker so local history can reconcile with the hosted migration table.
