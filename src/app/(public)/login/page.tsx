@@ -43,13 +43,13 @@ const resolveStatus = (
 const loginTrustNotes = [
   {
     description:
-      "Only invited or already provisioned collaborators can receive a secure sign-in link from this page.",
+      "Only invited or already authorized collaborators can receive a secure sign-in link.",
     title: "Protected access",
   },
   {
     description:
-      "No password reset flow is required. The email tied to your account receives a one-time link.",
-    title: "Simple by design",
+      "No password required. The email tied to your account receives a one-time link.",
+    title: "Secure by design",
   },
 ] as const;
 
@@ -127,16 +127,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <p className="inline-flex rounded-full bg-[#cad3b8] px-3 py-1 font-medium text-[#262531] text-xs uppercase tracking-[0.18em]">
             Invite-only access
           </p>
-          <p className="text-[#262531]/56 text-sm">Magic link sign-in</p>
         </div>
         <div className="space-y-3">
           <h2 className="font-semibold text-3xl text-[#262531] tracking-[-0.04em] sm:text-4xl">
-            Sign in to the Accelerate data workspace
+            Sign in to your Accelerate Global workspace
           </h2>
           <CardDescription className="max-w-xl text-[#262531]/72 text-sm leading-7 sm:text-[15px]">
-            Use the email tied to your invite or existing authorized account. We
-            will send a one-time sign-in link so you can continue into the
-            product without creating a new profile here.
+            Use the same email address you were invited with or your existing
+            account. We will send a one-time sign-in link so you can continue
+            into your workspace.
           </CardDescription>
         </div>
       </CardHeader>
@@ -164,7 +163,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </div>
         <p className="text-[#262531]/68 text-sm leading-6">
           Need access but do not have an invite yet? Contact the Accelerate
-          Global administrator or partner lead coordinating your workspace.
+          Global administrator.
         </p>
       </CardContent>
     </Card>
