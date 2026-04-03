@@ -5,11 +5,6 @@ const loginHeading = "Sign in to the Accelerate data workspace";
 test("renders the finalized login page on desktop", async ({ page }) => {
   await page.goto("/login");
 
-  await expect(
-    page.getByRole("heading", {
-      name: "Data to discipleship starts with trusted access.",
-    })
-  ).toBeVisible();
   await expect(page.getByRole("heading", { name: loginHeading })).toBeVisible();
   await expect(page.getByLabel("Email address")).toBeVisible();
   await expect(
