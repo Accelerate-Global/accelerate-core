@@ -24,10 +24,6 @@ export const LoginFormFields = () => {
           required
           type="email"
         />
-        <span className="text-[#262531]/58 text-sm leading-6">
-          Use the same email address connected to your invite or authorized
-          account record.
-        </span>
       </label>
       <Button
         className="h-11 w-full rounded-xl bg-[#262531] text-[#f7f6ef] hover:bg-[#262531]/92"
@@ -42,7 +38,7 @@ export const LoginFormFields = () => {
       >
         {pending
           ? "Checking your account and preparing a secure sign-in link."
-          : "We only send secure links to emails already allowed into this workspace."}
+          : ""}
       </p>
     </fieldset>
   );
