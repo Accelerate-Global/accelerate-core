@@ -20,17 +20,25 @@ interface LoginPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
+type LoginStatus = "cooldown" | "error" | "idle" | "not-provisioned" | "sent";
+
 export const metadata: Metadata = {
   title: "Login",
 };
 
-const resolveStatus = (
-  value: string | string[] | undefined
-): "error" | "idle" | "sent" => {
+const resolveStatus = (value: string | string[] | undefined): LoginStatus => {
   const normalized = Array.isArray(value) ? value[0] : value;
 
   if (normalized === "sent") {
     return "sent";
+  }
+
+  if (normalized === "cooldown") {
+    return "cooldown";
+  }
+
+  if (normalized === "not-provisioned") {
+    return "not-provisioned";
   }
 
   if (normalized === "error") {
@@ -54,7 +62,7 @@ const loginTrustNotes = [
 ] as const;
 
 interface LoginStatusPanelProps {
-  status: "error" | "idle" | "sent";
+  status: LoginStatus;
 }
 
 const LoginStatusPanel = ({ status }: LoginStatusPanelProps) => {
@@ -63,6 +71,35 @@ const LoginStatusPanel = ({ status }: LoginStatusPanelProps) => {
   }
 
   const isSuccess = status === "sent";
+  let content = {
+    description:
+      "Confirm the email address and try again. If access was recently granted, wait a moment and retry or contact the Accelerate team member who invited you.",
+    title: "We couldn’t start sign-in",
+  };
+
+  if (status === "sent") {
+    content = {
+      description:
+        "If the address is authorized, a one-time sign-in link is on the way. Give it a minute, and check spam or promotions if it does not appear.",
+      title: "Check your email",
+    };
+  }
+
+  if (status === "cooldown") {
+    content = {
+      description:
+        "A recent sign-in link request is still cooling down. Wait a moment before retrying, then check your inbox, spam, or promotions tabs for the latest message.",
+      title: "Please wait before retrying",
+    };
+  }
+
+  if (status === "not-provisioned") {
+    content = {
+      description:
+        "This sign-in only works for emails already provisioned for the workspace. If access was just granted, wait a moment and retry, or ask the Accelerate administrator to confirm your account is ready.",
+      title: "This email is not provisioned yet",
+    };
+  }
 
   return (
     <section
@@ -90,13 +127,9 @@ const LoginStatusPanel = ({ status }: LoginStatusPanelProps) => {
         </div>
         <div className="space-y-2">
           <h3 className="font-medium text-base tracking-tight">
-            {isSuccess ? "Check your email" : "We couldn’t start sign-in"}
+            {content.title}
           </h3>
-          <p className="text-sm leading-6">
-            {isSuccess
-              ? "If the address is authorized, a one-time sign-in link is on the way. Give it a minute, and check spam or promotions if it does not appear."
-              : "Confirm the email address and try again. If access was recently granted, wait a moment and retry or contact the Accelerate team member who invited you."}
-          </p>
+          <p className="text-sm leading-6">{content.description}</p>
           {isSuccess ? (
             <Button asChild size="sm" variant="outline">
               <Link href={routes.login}>
