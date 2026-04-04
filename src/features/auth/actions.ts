@@ -6,6 +6,7 @@ import { z } from "zod";
 import { routes } from "@/lib/routes";
 
 import {
+  AuthSendError,
   finalizeInviteForCurrentUser,
   getCurrentUser,
   resolveInviteToken,
@@ -15,6 +16,7 @@ import {
 } from "./server";
 
 const emailSchema = z.string().trim().email();
+type LoginRedirectStatus = "cooldown" | "error" | "not-provisioned" | "sent";
 
 const getInviteRedirect = (
   token: string,
@@ -27,12 +29,45 @@ const getInviteRedirect = (
   return `${routes.invite.replace("[token]", token)}?${params.toString()}`;
 };
 
-const getLoginRedirect = (status: "error" | "sent"): string => {
+const getLoginRedirect = (status: LoginRedirectStatus): string => {
   const params = new URLSearchParams({
     status,
   });
 
   return `${routes.login}?${params.toString()}`;
+};
+
+const logMagicLinkSendFailure = (error: unknown): void => {
+  if (error instanceof AuthSendError) {
+    console.error("Magic link send failed", {
+      code: error.code ?? null,
+      message: error.message,
+      status: error.status ?? null,
+    });
+    return;
+  }
+
+  console.error("Magic link send failed", {
+    code: null,
+    message: error instanceof Error ? error.message : "Unknown error",
+    status: null,
+  });
+};
+
+const getLoginFailureStatus = (
+  error: unknown
+): Exclude<LoginRedirectStatus, "sent"> => {
+  if (error instanceof AuthSendError) {
+    if (error.code === "over_email_send_rate_limit") {
+      return "cooldown";
+    }
+
+    if (error.code === "otp_disabled") {
+      return "not-provisioned";
+    }
+  }
+
+  return "error";
 };
 
 export const requestMagicLinkLoginAction = async (
@@ -47,8 +82,9 @@ export const requestMagicLinkLoginAction = async (
 
   try {
     await sendReturningUserMagicLink(parsedEmail.data);
-  } catch {
-    redirect(getLoginRedirect("error"));
+  } catch (error) {
+    logMagicLinkSendFailure(error);
+    redirect(getLoginRedirect(getLoginFailureStatus(error)));
   }
 
   redirect(getLoginRedirect("sent"));
