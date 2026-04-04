@@ -28,6 +28,24 @@ interface InviteRecord {
   status: "accepted" | "expired" | "pending" | "revoked";
 }
 
+export class AuthSendError extends Error {
+  code?: string;
+  status?: number;
+
+  constructor(
+    message: string,
+    options?: {
+      code?: string;
+      status?: number;
+    }
+  ) {
+    super(message);
+    this.name = "AuthSendError";
+    this.code = options?.code;
+    this.status = options?.status;
+  }
+}
+
 const INVITE_APP_EXPIRY_HOURS = 48;
 
 const inviteSelect =
@@ -240,7 +258,13 @@ export const sendReturningUserMagicLink = async (
   });
 
   if (error) {
-    throw new Error(`Failed to send login magic link: ${error.message}`);
+    throw new AuthSendError(
+      `Failed to send login magic link: ${error.message}`,
+      {
+        code: error.code,
+        status: error.status,
+      }
+    );
   }
 };
 
