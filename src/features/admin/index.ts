@@ -1,6 +1,6 @@
 export const adminFeatureStatus = {
-  phase: "Phase 6",
+  phase: "Phase B",
   status: "implemented",
   summary:
-    "Administrative users, invites, permissions, datasets, and publishing are implemented. API and run oversight remain bounded placeholders until real backing systems are provided.",
+    "Administrative users, invites, permissions, datasets, publishing, and bounded ingestion operations are implemented. API readiness remains scaffolded, while pipeline runs stay explicitly deferred scaffolding only.",
 } as const;

@@ -8,12 +8,14 @@ import {
   listAdminAuthUsers,
   listAdminDatasetVersionEvents,
   listAdminProfiles,
+  listAdminPublishRuns,
 } from "@/features/admin/server";
 import type {
   AdminDatasetRecord,
   AdminDatasetVersionEventRecord,
   AdminDatasetVersionRecord,
   AdminPublishingSelectedVersion,
+  AdminPublishRunRecord,
 } from "@/features/admin/shared";
 import {
   buildDatasetVersionComparisonSummary,
@@ -28,6 +30,7 @@ import { requireCurrentUserAdmin } from "@/lib/auth/server";
 
 export interface AdminPublishingPageData {
   datasets: AdminDatasetRecord[];
+  publishRuns: AdminPublishRunRecord[];
   selectedDataset: AdminDatasetRecord | null;
   selectedDatasetId: string | null;
   selectedVersion: AdminPublishingSelectedVersion | null;
@@ -98,10 +101,11 @@ export const loadAdminPublishingPage = async (
 ): Promise<AdminPublishingPageData> => {
   await requireCurrentUserAdmin();
   const inventory = await loadAdminDatasetInventory();
-  const [profiles, authUsers, versionEvents] = await Promise.all([
+  const [profiles, authUsers, versionEvents, publishRuns] = await Promise.all([
     listAdminProfiles(),
     listAdminAuthUsers(),
     listAdminDatasetVersionEvents(),
+    listAdminPublishRuns(),
   ]);
   const profileById = new Map(
     profiles.map((profile) => [profile.user_id, profile] as const)
@@ -307,9 +311,40 @@ export const loadAdminPublishingPage = async (
           } satisfies AdminDatasetVersionEventRecord;
         })
     : [];
+  const filteredPublishRuns = selectedDataset
+    ? publishRuns
+        .filter((run) => run.dataset_id === selectedDataset.id)
+        .map((run) => {
+          const actorProfile = run.requested_by
+            ? profileById.get(run.requested_by)
+            : undefined;
+          const actorAuthUser = run.requested_by
+            ? authUsers.usersById.get(run.requested_by)
+            : undefined;
+          const version = rawVersionsById.get(run.dataset_version_id);
+
+          return {
+            actionType: run.action_type,
+            completedAt: run.completed_at,
+            createdAt: run.created_at,
+            datasetId: run.dataset_id,
+            datasetName: selectedDataset.name,
+            datasetVersionId: run.dataset_version_id,
+            datasetVersionNumber: version?.version_number ?? null,
+            errorMessage: run.error_message,
+            id: run.id,
+            requestedByDisplayName: actorProfile?.display_name ?? null,
+            requestedByEmail: actorAuthUser?.email ?? null,
+            requestedByUserId: run.requested_by,
+            startedAt: run.started_at,
+            status: run.status,
+          } satisfies AdminPublishRunRecord;
+        })
+    : [];
 
   return {
     datasets: inventory.datasets,
+    publishRuns: filteredPublishRuns,
     selectedDataset,
     selectedDatasetId,
     selectedVersion,

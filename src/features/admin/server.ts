@@ -15,6 +15,23 @@ const workspaceMembershipSelect = "workspace_id, user_id, role, created_at";
 const inviteSelect =
   "id, email, status, expires_at, accepted_at, created_by, created_at, updated_at";
 
+const registeredSourceSelect =
+  "id, slug, name, description, connector_kind, is_enabled, config, " +
+  "last_run_at, last_run_status, created_by, created_at, updated_at";
+
+const ingestionRunSelect =
+  "id, source_id, run_kind, status, requested_by, started_at, completed_at, " +
+  "error_message, source_config_snapshot, metadata, created_at, updated_at";
+
+const pipelineRunSelect =
+  "id, source_id, ingestion_run_id, pipeline_key, execution_mode, status, " +
+  "requested_by, started_at, completed_at, error_message, metadata, " +
+  "created_at, updated_at";
+
+const publishRunSelect =
+  "id, dataset_id, dataset_version_id, action_type, status, requested_by, " +
+  "started_at, completed_at, error_message, metadata, created_at, updated_at";
+
 const datasetSelect =
   "id, slug, name, description, visibility, is_default_global, owner_workspace_id, active_version_id, metadata, created_at, updated_at";
 
@@ -109,6 +126,78 @@ export const listAdminInvites = async (): Promise<Tables<"invites">[]> => {
   }
 
   return (data ?? []) as Tables<"invites">[];
+};
+
+export const listAdminRegisteredSources = async (): Promise<
+  Tables<"registered_sources">[]
+> => {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("registered_sources")
+    .select(registeredSourceSelect)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(
+      toErrorMessage("Failed to load registered sources", error.message)
+    );
+  }
+
+  return (data ?? []) as unknown as Tables<"registered_sources">[];
+};
+
+export const listAdminIngestionRuns = async (): Promise<
+  Tables<"ingestion_runs">[]
+> => {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("ingestion_runs")
+    .select(ingestionRunSelect)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(
+      toErrorMessage("Failed to load ingestion runs", error.message)
+    );
+  }
+
+  return (data ?? []) as unknown as Tables<"ingestion_runs">[];
+};
+
+export const listAdminPipelineRuns = async (): Promise<
+  Tables<"pipeline_runs">[]
+> => {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("pipeline_runs")
+    .select(pipelineRunSelect)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(
+      toErrorMessage("Failed to load pipeline runs", error.message)
+    );
+  }
+
+  return (data ?? []) as unknown as Tables<"pipeline_runs">[];
+};
+
+export const listAdminPublishRuns = async (): Promise<
+  Tables<"publish_runs">[]
+> => {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("publish_runs")
+    .select(publishRunSelect)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(
+      toErrorMessage("Failed to load publishing operations", error.message)
+    );
+  }
+
+  return (data ?? []) as unknown as Tables<"publish_runs">[];
 };
 
 export const listAdminDatasets = async (): Promise<Tables<"datasets">[]> => {

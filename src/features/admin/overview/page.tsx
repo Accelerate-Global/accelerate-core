@@ -60,10 +60,16 @@ const quickLinks = [
     title: "APIs",
   },
   {
-    description: "Bounded placeholder for future operational oversight.",
+    description: "Register sources and trigger bounded ingestion reads.",
+    href: routes.adminIngestionRuns,
+    icon: FolderKanban,
+    title: "Ingestion Runs",
+  },
+  {
+    description: "Inspect deferred downstream scaffold history.",
     href: routes.adminPipelineRuns,
     icon: FolderKanban,
-    title: "Operations",
+    title: "Pipeline Runs",
   },
 ] as const;
 
@@ -81,7 +87,7 @@ export const AdminDashboardPageView = ({
 }: AdminDashboardSummary) => {
   return (
     <AdminModuleShell
-      description="Operational overview for user administration, invite posture, dataset visibility, and version activation."
+      description="Operational overview for user administration, invite posture, dataset visibility, ingestion scaffolding, and version activation."
       route={routes.adminHome}
       title="Overview"
     >

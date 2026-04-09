@@ -10,6 +10,7 @@ export type AdminActionStatus = "error" | "idle" | "success";
 export type AppRole = Enums<"app_role">;
 export type DatasetVisibility = Enums<"dataset_visibility">;
 export type InviteStatus = Enums<"invite_status">;
+export type OperationRunStatus = Enums<"operation_run_status">;
 export type WorkspaceMemberRole = Enums<"workspace_member_role">;
 
 export interface AdminActionState<TData = null> {
@@ -160,11 +161,74 @@ export interface AdminDashboardSummary {
   workspaceDatasetCount: number;
 }
 
-export interface AdminOversightStatus {
-  description: string;
-  integrationNotes: string[];
-  key: "apis" | "ingestion-runs" | "pipeline-runs";
-  title: string;
+export interface AdminRegisteredSourceRecord {
+  connectorKind: string;
+  createdAt: string;
+  description: string | null;
+  id: string;
+  ingestionRunCount: number;
+  isEnabled: boolean;
+  lastIngestionRunId: string | null;
+  lastRunAt: string | null;
+  lastRunStatus: OperationRunStatus | null;
+  name: string;
+  pipelineRunCount: number;
+  range: string;
+  sheetName: string;
+  slug: string;
+  spreadsheetId: string;
+  updatedAt: string;
+}
+
+export interface AdminIngestionRunRecord {
+  completedAt: string | null;
+  createdAt: string;
+  errorMessage: string | null;
+  id: string;
+  requestedByDisplayName: string | null;
+  requestedByEmail: string | null;
+  requestedByUserId: string | null;
+  runKind: string;
+  sourceId: string;
+  sourceName: string;
+  sourceSlug: string;
+  startedAt: string | null;
+  status: OperationRunStatus;
+}
+
+export interface AdminPipelineRunRecord {
+  completedAt: string | null;
+  createdAt: string;
+  errorMessage: string | null;
+  executionMode: string;
+  id: string;
+  ingestionRunId: string | null;
+  pipelineKey: string;
+  requestedByDisplayName: string | null;
+  requestedByEmail: string | null;
+  requestedByUserId: string | null;
+  sourceId: string;
+  sourceName: string;
+  sourceSlug: string;
+  startedAt: string | null;
+  status: OperationRunStatus;
+}
+
+export interface AdminPublishRunRecord {
+  actionType: string;
+  completedAt: string | null;
+  createdAt: string;
+  datasetId: string;
+  datasetName: string;
+  datasetVersionId: string;
+  datasetVersionNumber: number | null;
+  errorMessage: string | null;
+  id: string;
+  requestedByDisplayName: string | null;
+  requestedByEmail: string | null;
+  requestedByUserId: string | null;
+  startedAt: string | null;
+  status: OperationRunStatus;
 }
 
 export const createInitialAdminActionState = <
@@ -226,6 +290,13 @@ export const visibilityLabel: Record<DatasetVisibility, string> = {
 export const appRoleLabel: Record<AppRole, string> = {
   admin: "Admin",
   user: "User",
+};
+
+export const operationRunStatusLabel: Record<OperationRunStatus, string> = {
+  failed: "Failed",
+  queued: "Queued",
+  running: "Running",
+  succeeded: "Succeeded",
 };
 
 export const getDatasetAccessRuleCopy = (

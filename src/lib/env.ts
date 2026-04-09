@@ -23,6 +23,9 @@ const appUrlSchema = requiredString("NEXT_PUBLIC_APP_URL").url(
   "NEXT_PUBLIC_APP_URL must be a valid URL."
 );
 const serviceRoleKeySchema = requiredString("SUPABASE_SERVICE_ROLE_KEY");
+const googleServiceAccountJsonSchema = requiredString(
+  "GOOGLE_SERVICE_ACCOUNT_JSON"
+);
 
 const formatEnvError = (
   runtime: "client" | "server",
@@ -160,6 +163,12 @@ export const getAppUrl = (): string => {
 
 export const getSupabaseServiceRoleKey = (): string => {
   return serviceRoleKeySchema.parse(process.env.SUPABASE_SERVICE_ROLE_KEY);
+};
+
+export const getGoogleServiceAccountJson = (): string => {
+  return googleServiceAccountJsonSchema.parse(
+    process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+  );
 };
 
 export const validateEnv = (): void => {

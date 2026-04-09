@@ -335,6 +335,122 @@ export interface Database {
         };
         Relationships: [];
       };
+      ingestion_runs: {
+        Row: {
+          completed_at: string | null;
+          created_at: string;
+          error_message: string | null;
+          id: string;
+          metadata: Json;
+          requested_by: string | null;
+          run_kind: string;
+          source_config_snapshot: Json;
+          source_id: string;
+          started_at: string | null;
+          status: Database["public"]["Enums"]["operation_run_status"];
+          updated_at: string;
+        };
+        Insert: {
+          completed_at?: string | null;
+          created_at?: string;
+          error_message?: string | null;
+          id?: string;
+          metadata?: Json;
+          requested_by?: string | null;
+          run_kind: string;
+          source_config_snapshot?: Json;
+          source_id: string;
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["operation_run_status"];
+          updated_at?: string;
+        };
+        Update: {
+          completed_at?: string | null;
+          created_at?: string;
+          error_message?: string | null;
+          id?: string;
+          metadata?: Json;
+          requested_by?: string | null;
+          run_kind?: string;
+          source_config_snapshot?: Json;
+          source_id?: string;
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["operation_run_status"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ingestion_runs_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "registered_sources";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      pipeline_runs: {
+        Row: {
+          completed_at: string | null;
+          created_at: string;
+          error_message: string | null;
+          execution_mode: string;
+          id: string;
+          ingestion_run_id: string | null;
+          metadata: Json;
+          pipeline_key: string;
+          requested_by: string | null;
+          source_id: string;
+          started_at: string | null;
+          status: Database["public"]["Enums"]["operation_run_status"];
+          updated_at: string;
+        };
+        Insert: {
+          completed_at?: string | null;
+          created_at?: string;
+          error_message?: string | null;
+          execution_mode: string;
+          id?: string;
+          ingestion_run_id?: string | null;
+          metadata?: Json;
+          pipeline_key: string;
+          requested_by?: string | null;
+          source_id: string;
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["operation_run_status"];
+          updated_at?: string;
+        };
+        Update: {
+          completed_at?: string | null;
+          created_at?: string;
+          error_message?: string | null;
+          execution_mode?: string;
+          id?: string;
+          ingestion_run_id?: string | null;
+          metadata?: Json;
+          pipeline_key?: string;
+          requested_by?: string | null;
+          source_id?: string;
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["operation_run_status"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_runs_ingestion_run_id_fkey";
+            columns: ["ingestion_run_id"];
+            isOneToOne: false;
+            referencedRelation: "ingestion_runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pipeline_runs_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "registered_sources";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           app_role: Database["public"]["Enums"]["app_role"];
@@ -359,6 +475,117 @@ export interface Database {
           display_name?: string | null;
           updated_at?: string;
           user_id?: string;
+        };
+        Relationships: [];
+      };
+      publish_runs: {
+        Row: {
+          action_type: string;
+          completed_at: string | null;
+          created_at: string;
+          dataset_id: string;
+          dataset_version_id: string;
+          error_message: string | null;
+          id: string;
+          metadata: Json;
+          requested_by: string | null;
+          started_at: string | null;
+          status: Database["public"]["Enums"]["operation_run_status"];
+          updated_at: string;
+        };
+        Insert: {
+          action_type: string;
+          completed_at?: string | null;
+          created_at?: string;
+          dataset_id: string;
+          dataset_version_id: string;
+          error_message?: string | null;
+          id?: string;
+          metadata?: Json;
+          requested_by?: string | null;
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["operation_run_status"];
+          updated_at?: string;
+        };
+        Update: {
+          action_type?: string;
+          completed_at?: string | null;
+          created_at?: string;
+          dataset_id?: string;
+          dataset_version_id?: string;
+          error_message?: string | null;
+          id?: string;
+          metadata?: Json;
+          requested_by?: string | null;
+          started_at?: string | null;
+          status?: Database["public"]["Enums"]["operation_run_status"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "publish_runs_dataset_id_fkey";
+            columns: ["dataset_id"];
+            isOneToOne: false;
+            referencedRelation: "datasets";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "publish_runs_dataset_version_id_fkey";
+            columns: ["dataset_version_id"];
+            isOneToOne: false;
+            referencedRelation: "dataset_versions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      registered_sources: {
+        Row: {
+          config: Json;
+          connector_kind: string;
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          id: string;
+          is_enabled: boolean;
+          last_run_at: string | null;
+          last_run_status:
+            | Database["public"]["Enums"]["operation_run_status"]
+            | null;
+          name: string;
+          slug: string;
+          updated_at: string;
+        };
+        Insert: {
+          config?: Json;
+          connector_kind: string;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          is_enabled?: boolean;
+          last_run_at?: string | null;
+          last_run_status?:
+            | Database["public"]["Enums"]["operation_run_status"]
+            | null;
+          name: string;
+          slug: string;
+          updated_at?: string;
+        };
+        Update: {
+          config?: Json;
+          connector_kind?: string;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          is_enabled?: boolean;
+          last_run_at?: string | null;
+          last_run_status?:
+            | Database["public"]["Enums"]["operation_run_status"]
+            | null;
+          name?: string;
+          slug?: string;
+          updated_at?: string;
         };
         Relationships: [];
       };
@@ -467,6 +694,7 @@ export interface Database {
       app_role: "user" | "admin";
       dataset_visibility: "global" | "private" | "workspace" | "shared";
       invite_status: "pending" | "accepted" | "revoked" | "expired";
+      operation_run_status: "queued" | "running" | "succeeded" | "failed";
       workspace_member_role: "owner" | "admin" | "member";
     };
     CompositeTypes: {
@@ -601,6 +829,7 @@ export const Constants = {
       app_role: ["user", "admin"],
       dataset_visibility: ["global", "private", "workspace", "shared"],
       invite_status: ["pending", "accepted", "revoked", "expired"],
+      operation_run_status: ["queued", "running", "succeeded", "failed"],
       workspace_member_role: ["owner", "admin", "member"],
     },
   },
