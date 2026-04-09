@@ -1,11 +1,4 @@
-import { redirect } from "next/navigation";
-
 import { AuthCallbackClient } from "@/features/auth/auth-callback-client";
-import {
-  exchangeCodeForSession,
-  finalizeSessionOnboarding,
-  getCurrentUser,
-} from "@/features/auth/server";
 import { routes } from "@/lib/routes";
 
 interface AuthCallbackPageProps {
@@ -35,25 +28,10 @@ export default async function AuthCallbackPage({
   searchParams,
 }: AuthCallbackPageProps) {
   const params = await searchParams;
-  const code = readParam(params.code);
   const nextPath = getSafeNextPath(readParam(params.next, routes.appHome));
+  const authCode = readParam(params.code);
 
-  if (!code) {
-    return <AuthCallbackClient nextPath={nextPath} />;
-  }
-
-  try {
-    await exchangeCodeForSession(code);
-    const user = await getCurrentUser();
-
-    if (!user) {
-      redirect(`${routes.login}?status=error`);
-    }
-
-    await finalizeSessionOnboarding(user);
-  } catch {
-    redirect(routes.authSetupIncomplete);
-  }
-
-  redirect(nextPath);
+  return (
+    <AuthCallbackClient authCode={authCode || undefined} nextPath={nextPath} />
+  );
 }

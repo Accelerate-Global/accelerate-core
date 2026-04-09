@@ -14,8 +14,20 @@ const getInternalPath = (value: string): string => {
 };
 
 interface AuthCallbackClientProps {
+  authCode?: string;
   nextPath: string;
 }
+
+const exchangeCodeForBrowserSession = async (
+  authCode: string
+): Promise<void> => {
+  const supabase = createBrowserSupabaseClient();
+  const { error } = await supabase.auth.exchangeCodeForSession(authCode);
+
+  if (error) {
+    throw error;
+  }
+};
 
 const maybeSetSessionFromHash = async (): Promise<void> => {
   const hashParams = new URLSearchParams(window.location.hash.slice(1));
@@ -57,7 +69,10 @@ const finalizeBrowserSession = async (): Promise<void> => {
   }
 };
 
-export const AuthCallbackClient = ({ nextPath }: AuthCallbackClientProps) => {
+export const AuthCallbackClient = ({
+  authCode,
+  nextPath,
+}: AuthCallbackClientProps) => {
   const router = useRouter();
 
   useEffect(() => {
@@ -65,7 +80,12 @@ export const AuthCallbackClient = ({ nextPath }: AuthCallbackClientProps) => {
 
     const run = async () => {
       try {
-        await maybeSetSessionFromHash();
+        if (authCode) {
+          await exchangeCodeForBrowserSession(authCode);
+        } else {
+          await maybeSetSessionFromHash();
+        }
+
         await ensureAuthenticatedBrowserSession();
         await finalizeBrowserSession();
 
@@ -84,7 +104,7 @@ export const AuthCallbackClient = ({ nextPath }: AuthCallbackClientProps) => {
     return () => {
       isCancelled = true;
     };
-  }, [nextPath, router]);
+  }, [authCode, nextPath, router]);
 
   return (
     <p className="rounded-lg border bg-muted/30 px-4 py-3 text-muted-foreground text-sm">
