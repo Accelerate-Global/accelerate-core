@@ -585,6 +585,14 @@ const runHostedProductionProof = async ({
     runId,
     source: validationSource,
   });
+  const selectedRunDetailCard = page
+    .locator("[data-slot='card']")
+    .filter({
+      has: page.getByText("Source snapshot"),
+    })
+    .filter({
+      has: page.getByText("Run summary"),
+    });
 
   await expect(page.getByText("Run details")).toBeVisible();
   await expect(
@@ -601,7 +609,9 @@ const runHostedProductionProof = async ({
   await expect(
     page.getByText(`Range: ${runExpectations.expectedRange}`)
   ).toBeVisible();
-  await expect(page.getByText("Succeeded")).toBeVisible();
+  await expect(
+    selectedRunDetailCard.getByText("Succeeded", { exact: true })
+  ).toBeVisible();
 
   const pipelineRunId = await waitForDeferredPipelineRunId({
     ingestionRunId: runId,
@@ -614,7 +624,12 @@ const runHostedProductionProof = async ({
   await expect(
     page.getByRole("heading", { exact: true, name: "Pipeline Runs" })
   ).toBeVisible();
-  await expect(page.getByText("Deferred scaffold only")).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      exact: true,
+      name: "Deferred scaffold only",
+    })
+  ).toBeVisible();
   await expect(
     page.getByText("Execution mode: deferred_scaffold")
   ).toBeVisible();
