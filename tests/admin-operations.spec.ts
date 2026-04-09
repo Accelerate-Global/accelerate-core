@@ -554,7 +554,9 @@ const runHostedProductionProof = async ({
   await expect(
     page.getByRole("heading", { exact: true, name: "Ingestion Runs" })
   ).toBeVisible();
-  await expect(page.getByText(validationSource.name)).toBeVisible();
+  await expect(
+    page.getByText(validationSource.name, { exact: true })
+  ).toBeVisible();
 
   const runReadForm = page
     .locator("form")

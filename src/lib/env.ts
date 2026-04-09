@@ -167,7 +167,10 @@ export const getSupabaseServiceRoleKey = (): string => {
 
 export const getGoogleServiceAccountJson = (): string => {
   return googleServiceAccountJsonSchema.parse(
-    process.env.GOOGLE_SERVICE_ACCOUNT_JSON
+    getFirstDefinedEnvValue(
+      process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+      process.env.GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON
+    )
   );
 };
 
