@@ -120,12 +120,19 @@ export const ingestionRunMetadataSchema = z.object({
   metadataBytes: z.number().int().nonnegative().nullable().default(null),
   rawRowCount: z.number().int().nonnegative().default(0),
   sampleRows: z.array(z.array(z.string())).default([]),
-  truncated: z.object({
-    cellValues: z.boolean().default(false),
-    headers: z.boolean().default(false),
-    metadata: z.boolean().default(false),
-    sampleRows: z.boolean().default(false),
-  }),
+  truncated: z
+    .object({
+      cellValues: z.boolean().default(false),
+      headers: z.boolean().default(false),
+      metadata: z.boolean().default(false),
+      sampleRows: z.boolean().default(false),
+    })
+    .default({
+      cellValues: false,
+      headers: false,
+      metadata: false,
+      sampleRows: false,
+    }),
   valuesSource: z.string().trim().min(1).default("google_api"),
 });
 
