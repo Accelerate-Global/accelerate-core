@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { publishRunActionType } from "@/features/admin/operations/source-config";
 import { requireCurrentUserAdmin } from "@/lib/auth/server";
 import { routes } from "@/lib/routes";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -224,15 +225,83 @@ export const activateDatasetVersionAction = async (
   }
 
   const supabase = createAdminClient();
-  const { error } = await supabase.rpc("activate_dataset_version", {
+  const startedAt = new Date().toISOString();
+  const { data: publishRun, error: createPublishRunError } = await supabase
+    .from("publish_runs")
+    .insert({
+      action_type: publishRunActionType.activateDatasetVersion,
+      dataset_id: datasetId,
+      dataset_version_id: datasetVersionId,
+      metadata: {},
+      requested_by: actingUser.id,
+      started_at: startedAt,
+      status: "running",
+    })
+    .select("id")
+    .single();
+
+  if (createPublishRunError) {
+    throw new Error(
+      toErrorMessage(
+        "Failed to create the publishing operation record",
+        createPublishRunError.message
+      )
+    );
+  }
+
+  const { data, error } = await supabase.rpc("activate_dataset_version", {
     target_actor_user_id: actingUser.id,
     target_dataset_id: datasetId,
     target_dataset_version_id: datasetVersionId,
   });
 
   if (error) {
+    const { error: publishRunError } = await supabase
+      .from("publish_runs")
+      .update({
+        completed_at: new Date().toISOString(),
+        error_message: error.message,
+        status: "failed",
+      })
+      .eq("id", publishRun.id);
+
+    if (publishRunError) {
+      throw new Error(
+        toErrorMessage(
+          "Failed to mark the publishing operation as failed",
+          publishRunError.message
+        )
+      );
+    }
+
     throw new Error(
       toErrorMessage("Failed to activate the dataset version", error.message)
+    );
+  }
+
+  const { error: publishRunError } = await supabase
+    .from("publish_runs")
+    .update({
+      completed_at: new Date().toISOString(),
+      error_message: null,
+      metadata: {
+        existingDomainHistoryTable: "dataset_version_events",
+        operationWrapper: true,
+        rpcResult:
+          typeof data === "object" && data !== null && !Array.isArray(data)
+            ? data
+            : {},
+      },
+      status: "succeeded",
+    })
+    .eq("id", publishRun.id);
+
+  if (publishRunError) {
+    throw new Error(
+      toErrorMessage(
+        "Failed to complete the publishing operation record",
+        publishRunError.message
+      )
     );
   }
 
