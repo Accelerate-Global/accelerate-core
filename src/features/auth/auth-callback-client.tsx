@@ -5,12 +5,25 @@ import { useEffect } from "react";
 
 import { createBrowserSupabaseClient } from "@/lib/supabase/client";
 
+const AUTH_SESSION_ATTEMPT_DELAYS_MS = [0, 100, 250, 500] as const;
+const FINALIZE_ATTEMPT_DELAYS_MS = [0, 150, 350, 700] as const;
+
 const getInternalPath = (value: string): string => {
   if (!value.startsWith("/") || value.startsWith("//")) {
     return "/app";
   }
 
   return value;
+};
+
+const wait = async (delayMs: number): Promise<void> => {
+  if (delayMs === 0) {
+    return;
+  }
+
+  await new Promise((resolve) => {
+    setTimeout(resolve, delayMs);
+  });
 };
 
 interface AuthCallbackClientProps {
@@ -51,22 +64,65 @@ const maybeSetSessionFromHash = async (): Promise<void> => {
 
 const ensureAuthenticatedBrowserSession = async (): Promise<void> => {
   const supabase = createBrowserSupabaseClient();
-  const { data, error } = await supabase.auth.getUser();
+  let lastError: Error | null = null;
 
-  if (error || !data.user) {
-    throw error ?? new Error("Missing authenticated user.");
+  for (const delayMs of AUTH_SESSION_ATTEMPT_DELAYS_MS) {
+    await wait(delayMs);
+
+    const { data, error } = await supabase.auth.getUser();
+
+    if (data.user) {
+      return;
+    }
+
+    if (error) {
+      lastError = error;
+    }
   }
+
+  throw lastError ?? new Error("Missing authenticated user.");
+};
+
+const getFinalizeErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const body = (await response.json()) as { message?: string };
+
+    if (typeof body.message === "string" && body.message.trim()) {
+      return body.message;
+    }
+  } catch {
+    // Ignore non-JSON error bodies and fall through to a generic message.
+  }
+
+  return `Finalization failed with status ${response.status}.`;
 };
 
 const finalizeBrowserSession = async (): Promise<void> => {
-  const finalizeResponse = await fetch("/api/auth/finalize", {
-    credentials: "include",
-    method: "POST",
-  });
+  let lastError: Error | null = null;
 
-  if (!finalizeResponse.ok) {
-    throw new Error("Failed to finalize session onboarding.");
+  for (const delayMs of FINALIZE_ATTEMPT_DELAYS_MS) {
+    await wait(delayMs);
+
+    try {
+      const finalizeResponse = await fetch("/api/auth/finalize", {
+        credentials: "include",
+        method: "POST",
+      });
+
+      if (finalizeResponse.ok) {
+        return;
+      }
+
+      lastError = new Error(await getFinalizeErrorMessage(finalizeResponse));
+    } catch (error) {
+      lastError =
+        error instanceof Error
+          ? error
+          : new Error("Failed to finalize session onboarding.");
+    }
   }
+
+  throw lastError ?? new Error("Failed to finalize session onboarding.");
 };
 
 export const AuthCallbackClient = ({
