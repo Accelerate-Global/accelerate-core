@@ -26,8 +26,14 @@ import type { AdminPublishingPageData } from "@/features/admin/publishing/server
 import type {
   AdminDatasetVersionEventRecord,
   AdminDatasetVersionRecord,
+  AdminPublishRunRecord,
+  OperationRunStatus,
 } from "@/features/admin/shared";
-import { formatAdminDateTime, visibilityLabel } from "@/features/admin/shared";
+import {
+  formatAdminDateTime,
+  operationRunStatusLabel,
+  visibilityLabel,
+} from "@/features/admin/shared";
 import { AdminModuleShell } from "@/features/admin/ui/admin-module-shell";
 import { ConfirmSubmitButton } from "@/features/admin/ui/confirm-submit-button";
 import { routes } from "@/lib/routes";
@@ -38,6 +44,13 @@ const visibilityBadgeClassName = {
   shared: "border-blue-200 bg-blue-50 text-blue-700",
   workspace: "border-orange-200 bg-orange-50 text-orange-700",
 } as const;
+
+const operationStatusBadgeClassName: Record<OperationRunStatus, string> = {
+  failed: "border-red-200 bg-red-50 text-red-700",
+  queued: "border-zinc-200 bg-zinc-100 text-zinc-700",
+  running: "border-blue-200 bg-blue-50 text-blue-700",
+  succeeded: "border-emerald-200 bg-emerald-50 text-emerald-700",
+};
 
 const formatRowCountDelta = (value: number): string => {
   if (value === 0) {
@@ -51,6 +64,20 @@ const formatRowCountDelta = (value: number): string => {
 
 const formatEventTypeLabel = (eventType: string): string => {
   return eventType === "published" ? "Published" : "Activated";
+};
+
+const formatPublishActionTypeLabel = (actionType: string): string => {
+  return actionType === "activate_dataset_version"
+    ? "Activate dataset version"
+    : actionType;
+};
+
+const PublishRunStatusBadge = ({ status }: { status: OperationRunStatus }) => {
+  return (
+    <Badge className={operationStatusBadgeClassName[status]}>
+      {operationRunStatusLabel[status]}
+    </Badge>
+  );
 };
 
 const buildPublishingHref = (datasetId: string, versionId?: string): string => {
@@ -185,6 +212,62 @@ const VersionEventHistoryTable = ({
   );
 };
 
+const PublishingOperationsTable = ({
+  publishRuns,
+}: {
+  publishRuns: AdminPublishRunRecord[];
+}) => {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>When</TableHead>
+          <TableHead>Action</TableHead>
+          <TableHead>Version</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Operator</TableHead>
+          <TableHead>Notes</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {publishRuns.length === 0 ? (
+          <TableRow>
+            <TableCell className="text-muted-foreground" colSpan={6}>
+              No publishing operation wrappers have been recorded for this
+              dataset yet.
+            </TableCell>
+          </TableRow>
+        ) : null}
+        {publishRuns.map((run) => (
+          <TableRow key={run.id}>
+            <TableCell>{formatAdminDateTime(run.createdAt)}</TableCell>
+            <TableCell>
+              {formatPublishActionTypeLabel(run.actionType)}
+            </TableCell>
+            <TableCell>v{run.datasetVersionNumber ?? "?"}</TableCell>
+            <TableCell>
+              <PublishRunStatusBadge status={run.status} />
+            </TableCell>
+            <TableCell>
+              <div className="space-y-1">
+                <p>{run.requestedByDisplayName ?? "Unknown operator"}</p>
+                <p className="text-muted-foreground text-xs">
+                  {run.requestedByEmail ?? "Email unavailable"}
+                </p>
+              </div>
+            </TableCell>
+            <TableCell className="text-muted-foreground text-xs">
+              {run.errorMessage
+                ? run.errorMessage
+                : "Operational wrapper only. Domain publish history remains in dataset version events."}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+};
+
 const AdminPublishingVersionRow = ({
   datasetId,
   selectedVersionId,
@@ -279,6 +362,7 @@ const AdminPublishingVersionRow = ({
 
 export const AdminPublishingPageView = ({
   datasets,
+  publishRuns,
   selectedDataset,
   selectedDatasetId,
   selectedVersion,
@@ -544,6 +628,19 @@ export const AdminPublishingPageView = ({
               </CardHeader>
               <CardContent>
                 <VersionEventHistoryTable events={versionEvents} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Publishing operations</CardTitle>
+                <CardDescription>
+                  Operational wrapper history around the existing activation
+                  flow. The authoritative domain history remains in dataset
+                  version events.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PublishingOperationsTable publishRuns={publishRuns} />
               </CardContent>
             </Card>
             <Card>

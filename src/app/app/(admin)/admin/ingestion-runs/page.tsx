@@ -1,8 +1,14 @@
-import { AdminOversightPageView } from "@/features/admin/operations/page";
-import { loadAdminOversightPage } from "@/features/admin/operations/server";
+import { AdminIngestionRunsPageView } from "@/features/admin/operations/page";
+import { loadAdminIngestionRunsPage } from "@/features/admin/operations/server";
 
-export default async function AdminIngestionRunsPage() {
-  const pageData = await loadAdminOversightPage("ingestion-runs");
+interface AdminIngestionRunsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
 
-  return <AdminOversightPageView {...pageData} />;
+export default async function AdminIngestionRunsPage({
+  searchParams,
+}: AdminIngestionRunsPageProps) {
+  const pageData = await loadAdminIngestionRunsPage(await searchParams);
+
+  return <AdminIngestionRunsPageView {...pageData} />;
 }
