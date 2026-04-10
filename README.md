@@ -36,7 +36,10 @@ Setup steps:
 2. Enable both Google Sheets API and Google Drive API.
 3. Create a Google service account.
 4. Download the service account JSON credentials.
-5. Store the full JSON document in
+5. Store the full JSON document in `GOOGLE_SERVICE_ACCOUNT_JSON` (same variable
+   as other server-side Google usage in this app) or in
+   `GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON` if you prefer a Workspace-specific
+   secret name. The connector checks `GOOGLE_SERVICE_ACCOUNT_JSON` first, then
    `GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON`.
 6. Share the target spreadsheet with the service account email as a
    `Viewer`.
