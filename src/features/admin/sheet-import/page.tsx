@@ -1,4 +1,4 @@
-import { FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, FileUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +11,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { sourceReadBounds } from "@/features/admin/operations/source-config";
-import { importGoogleSheetToDatasetAction } from "@/features/admin/sheet-import/actions";
+import {
+  importCsvToDatasetAction,
+  importGoogleSheetToDatasetAction,
+} from "@/features/admin/sheet-import/actions";
 import type { SheetImportPageData } from "@/features/admin/sheet-import/server";
 import { AdminModuleShell } from "@/features/admin/ui/admin-module-shell";
 import { routes } from "@/lib/routes";
@@ -24,9 +27,9 @@ export const SheetImportPageView = ({
 }: SheetImportPageData) => {
   return (
     <AdminModuleShell
-      description="Read the configured Google Sheet tab, create a new dataset version from the rows, and activate it so it appears in the product dataset browser."
+      description="Import from a Google Sheet tab or an uploaded CSV: create a new dataset version from the rows and activate it so it appears in the product dataset browser."
       route={routes.adminSheetImport}
-      title="Sheet import"
+      title="Sheet & CSV import"
     >
       {datasets.length === 0 ? (
         <Card>
@@ -34,114 +37,191 @@ export const SheetImportPageView = ({
             <CardTitle>No datasets available</CardTitle>
             <CardDescription>
               Create or seed datasets in Supabase first, then return here to
-              import sheet rows.
+              import rows.
             </CardDescription>
           </CardHeader>
         </Card>
       ) : null}
       {datasets.length === 0 ? null : (
-        <Card>
-          <CardHeader>
-            <div className="flex items-start gap-3">
-              <FileSpreadsheet
-                aria-hidden="true"
-                className="mt-0.5 size-8 shrink-0 text-muted-foreground"
-              />
-              <div className="space-y-1">
-                <CardTitle>Import from Google Sheet</CardTitle>
-                <CardDescription>
-                  Uses server credentials (
-                  <code className="text-xs">GOOGLE_SERVICE_ACCOUNT_JSON</code>
-                  ). Defaults match your Workspace connector env when set (
-                  <code className="text-xs">
-                    GOOGLE_WORKSPACE_SOURCE_SPREADSHEET_ID
-                  </code>
-                  , optional sheet/range overrides). The tab{" "}
-                  <strong>PGAC Titled 1</strong> is prefilled; adjust if your
-                  sheet differs.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <form
-              action={importGoogleSheetToDatasetAction}
-              className="space-y-6"
-            >
-              <div className="grid gap-2">
-                <label className="font-medium text-sm" htmlFor="datasetId">
-                  Target dataset
-                </label>
-                <Select
-                  className="max-w-lg"
-                  defaultValue=""
-                  id="datasetId"
-                  name="datasetId"
-                  required
-                >
-                  <option disabled value="">
-                    Choose a dataset
-                  </option>
-                  {datasets.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name} ({d.slug})
-                    </option>
-                  ))}
-                </Select>
-                <p className="text-muted-foreground text-sm">
-                  A new version is published and set as the active version for
-                  this dataset.
-                </p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="grid gap-2">
-                  <label
-                    className="font-medium text-sm"
-                    htmlFor="spreadsheetId"
-                  >
-                    Spreadsheet ID
-                  </label>
-                  <Input
-                    defaultValue={defaultSpreadsheetId}
-                    id="spreadsheetId"
-                    name="spreadsheetId"
-                    placeholder="From the Sheet URL (between /d/ and /edit)"
-                    required={!defaultSpreadsheetId}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <label className="font-medium text-sm" htmlFor="sheetName">
-                    Sheet / tab name
-                  </label>
-                  <Input
-                    defaultValue={defaultSheetName}
-                    id="sheetName"
-                    name="sheetName"
-                    placeholder="PGAC Titled 1"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <label className="font-medium text-sm" htmlFor="range">
-                  A1 range (bounded)
-                </label>
-                <Input
-                  defaultValue={defaultRange}
-                  id="range"
-                  name="range"
-                  placeholder="A1:ZZ2000"
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-start gap-3">
+                <FileSpreadsheet
+                  aria-hidden="true"
+                  className="mt-0.5 size-8 shrink-0 text-muted-foreground"
                 />
-                <p className="text-muted-foreground text-sm">
-                  First row must be headers. At most{" "}
-                  {sourceReadBounds.maxConfiguredRowSpan} rows and{" "}
-                  {sourceReadBounds.maxHeaderCount} columns are imported
-                  (connector limits).
-                </p>
+                <div className="space-y-1">
+                  <CardTitle>Import from Google Sheet</CardTitle>
+                  <CardDescription>
+                    Uses server credentials (
+                    <code className="text-xs">GOOGLE_SERVICE_ACCOUNT_JSON</code>
+                    ). Defaults match your Workspace connector env when set (
+                    <code className="text-xs">
+                      GOOGLE_WORKSPACE_SOURCE_SPREADSHEET_ID
+                    </code>
+                    , optional sheet/range overrides). The tab{" "}
+                    <strong>PGAC Titled 1</strong> is prefilled; adjust if your
+                    sheet differs.
+                  </CardDescription>
+                </div>
               </div>
-              <Button type="submit">Query sheet and import into dataset</Button>
-            </form>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <form
+                action={importGoogleSheetToDatasetAction}
+                className="space-y-6"
+              >
+                <div className="grid gap-2">
+                  <label className="font-medium text-sm" htmlFor="datasetId">
+                    Target dataset
+                  </label>
+                  <Select
+                    className="max-w-lg"
+                    defaultValue=""
+                    id="datasetId"
+                    name="datasetId"
+                    required
+                  >
+                    <option disabled value="">
+                      Choose a dataset
+                    </option>
+                    {datasets.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} ({d.slug})
+                      </option>
+                    ))}
+                  </Select>
+                  <p className="text-muted-foreground text-sm">
+                    A new version is published and set as the active version for
+                    this dataset.
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-2">
+                    <label
+                      className="font-medium text-sm"
+                      htmlFor="spreadsheetId"
+                    >
+                      Spreadsheet ID
+                    </label>
+                    <Input
+                      defaultValue={defaultSpreadsheetId}
+                      id="spreadsheetId"
+                      name="spreadsheetId"
+                      placeholder="From the Sheet URL (between /d/ and /edit)"
+                      required={!defaultSpreadsheetId}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <label className="font-medium text-sm" htmlFor="sheetName">
+                      Sheet / tab name
+                    </label>
+                    <Input
+                      defaultValue={defaultSheetName}
+                      id="sheetName"
+                      name="sheetName"
+                      placeholder="PGAC Titled 1"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <label className="font-medium text-sm" htmlFor="range">
+                    A1 range (bounded)
+                  </label>
+                  <Input
+                    defaultValue={defaultRange}
+                    id="range"
+                    name="range"
+                    placeholder="A1:ZZ2000"
+                  />
+                  <p className="text-muted-foreground text-sm">
+                    First row must be headers. At most{" "}
+                    {sourceReadBounds.maxConfiguredRowSpan} rows and{" "}
+                    {sourceReadBounds.maxHeaderCount} columns are imported
+                    (connector limits).
+                  </p>
+                </div>
+                <Button type="submit">
+                  Query sheet and import into dataset
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-start gap-3">
+                <FileUp
+                  aria-hidden="true"
+                  className="mt-0.5 size-8 shrink-0 text-muted-foreground"
+                />
+                <div className="space-y-1">
+                  <CardTitle>Import from CSV</CardTitle>
+                  <CardDescription>
+                    Upload a comma-separated file from your computer. First row
+                    must be column headers. Same row and column limits as the
+                    sheet connector; server upload limit matches{" "}
+                    <code className="text-xs">next.config</code> (6&nbsp;MB).
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <form
+                action={importCsvToDatasetAction}
+                className="space-y-6"
+                encType="multipart/form-data"
+              >
+                <div className="grid gap-2">
+                  <label className="font-medium text-sm" htmlFor="csvDatasetId">
+                    Target dataset
+                  </label>
+                  <Select
+                    className="max-w-lg"
+                    defaultValue=""
+                    id="csvDatasetId"
+                    name="datasetId"
+                    required
+                  >
+                    <option disabled value="">
+                      Choose a dataset
+                    </option>
+                    {datasets.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name} ({d.slug})
+                      </option>
+                    ))}
+                  </Select>
+                  <p className="text-muted-foreground text-sm">
+                    A new version is published and set as the active version for
+                    this dataset.
+                  </p>
+                </div>
+                <div className="grid gap-2">
+                  <label className="font-medium text-sm" htmlFor="csvFile">
+                    CSV file
+                  </label>
+                  <Input
+                    accept=".csv,text/csv,application/csv"
+                    id="csvFile"
+                    name="csvFile"
+                    required
+                    type="file"
+                  />
+                  <p className="text-muted-foreground text-sm">
+                    At most {sourceReadBounds.maxConfiguredRowSpan} data rows
+                    and {sourceReadBounds.maxHeaderCount} columns; file size up
+                    to 5 MB per upload.
+                  </p>
+                </div>
+                <Button type="submit">
+                  Upload CSV and import into dataset
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </AdminModuleShell>
   );
