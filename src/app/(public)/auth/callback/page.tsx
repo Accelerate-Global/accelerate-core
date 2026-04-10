@@ -29,9 +29,6 @@ export default async function AuthCallbackPage({
 }: AuthCallbackPageProps) {
   const params = await searchParams;
   const nextPath = getSafeNextPath(readParam(params.next, routes.appHome));
-  const authCode = readParam(params.code);
 
-  return (
-    <AuthCallbackClient authCode={authCode || undefined} nextPath={nextPath} />
-  );
+  return <AuthCallbackClient nextPath={nextPath} />;
 }
