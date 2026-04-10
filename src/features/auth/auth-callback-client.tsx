@@ -27,20 +27,8 @@ const wait = async (delayMs: number): Promise<void> => {
 };
 
 interface AuthCallbackClientProps {
-  authCode?: string;
   nextPath: string;
 }
-
-const exchangeCodeForBrowserSession = async (
-  authCode: string
-): Promise<void> => {
-  const supabase = createBrowserSupabaseClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(authCode);
-
-  if (error) {
-    throw error;
-  }
-};
 
 const maybeSetSessionFromHash = async (): Promise<void> => {
   const hashParams = new URLSearchParams(window.location.hash.slice(1));
@@ -113,7 +101,32 @@ const finalizeBrowserSession = async (): Promise<void> => {
         return;
       }
 
-      lastError = new Error(await getFinalizeErrorMessage(finalizeResponse));
+      // #region agent log
+      const failMsg = await getFinalizeErrorMessage(finalizeResponse);
+      fetch(
+        "http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "3fada2",
+          },
+          body: JSON.stringify({
+            sessionId: "3fada2",
+            runId: "post-fix",
+            hypothesisId: "H5",
+            location: "auth-callback-client.tsx:finalizeBrowserSession",
+            message: "finalize API not ok",
+            data: {
+              httpStatus: finalizeResponse.status,
+              messageSnippet: failMsg.slice(0, 160),
+            },
+            timestamp: Date.now(),
+          }),
+        }
+      ).catch(() => undefined);
+      lastError = new Error(failMsg);
+      // #endregion
     } catch (error) {
       lastError =
         error instanceof Error
@@ -125,30 +138,122 @@ const finalizeBrowserSession = async (): Promise<void> => {
   throw lastError ?? new Error("Failed to finalize session onboarding.");
 };
 
-export const AuthCallbackClient = ({
-  authCode,
-  nextPath,
-}: AuthCallbackClientProps) => {
+export const AuthCallbackClient = ({ nextPath }: AuthCallbackClientProps) => {
   const router = useRouter();
 
   useEffect(() => {
     let isCancelled = false;
 
     const run = async () => {
-      try {
-        if (authCode) {
-          await exchangeCodeForBrowserSession(authCode);
-        } else {
-          await maybeSetSessionFromHash();
+      // #region agent log
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      fetch(
+        "http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Debug-Session-Id": "3fada2",
+          },
+          body: JSON.stringify({
+            sessionId: "3fada2",
+            runId: "post-fix",
+            hypothesisId: "H1",
+            location: "auth-callback-client.tsx:run:start",
+            message: "callback path selection",
+            data: {
+              hasHashAccessToken: hashParams.has("access_token"),
+              hasHashRefreshToken: hashParams.has("refresh_token"),
+            },
+            timestamp: Date.now(),
+          }),
         }
+      ).catch(() => undefined);
+      // #endregion
+
+      try {
+        await maybeSetSessionFromHash();
 
         await ensureAuthenticatedBrowserSession();
+
+        // #region agent log
+        const supabaseAfter = createBrowserSupabaseClient();
+        const { data: userCheck } = await supabaseAfter.auth.getUser();
+        fetch(
+          "http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Debug-Session-Id": "3fada2",
+            },
+            body: JSON.stringify({
+              sessionId: "3fada2",
+              runId: "post-fix",
+              hypothesisId: "H2",
+              location: "auth-callback-client.tsx:run:after-session",
+              message: "browser session before finalize",
+              data: { hasUser: Boolean(userCheck.user) },
+              timestamp: Date.now(),
+            }),
+          }
+        ).catch(() => undefined);
+        // #endregion
+
         await finalizeBrowserSession();
+
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Debug-Session-Id": "3fada2",
+            },
+            body: JSON.stringify({
+              sessionId: "3fada2",
+              runId: "post-fix",
+              hypothesisId: "H3",
+              location: "auth-callback-client.tsx:run:finalize-ok",
+              message: "finalize completed",
+              data: { ok: true },
+              timestamp: Date.now(),
+            }),
+          }
+        ).catch(() => undefined);
+        // #endregion
 
         if (!isCancelled) {
           router.replace(getInternalPath(nextPath));
         }
-      } catch {
+      } catch (error) {
+        // #region agent log
+        const errMsg =
+          error instanceof Error ? error.message : "non-error throw";
+        fetch(
+          "http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Debug-Session-Id": "3fada2",
+            },
+            body: JSON.stringify({
+              sessionId: "3fada2",
+              runId: "post-fix",
+              hypothesisId: "H4",
+              location: "auth-callback-client.tsx:run:catch",
+              message: "callback flow error",
+              data: {
+                errorSnippet: errMsg.slice(0, 200),
+              },
+              timestamp: Date.now(),
+            }),
+          }
+        ).catch(() => undefined);
+        // #endregion
+
         if (!isCancelled) {
           router.replace("/auth/setup-incomplete");
         }
@@ -160,7 +265,7 @@ export const AuthCallbackClient = ({
     return () => {
       isCancelled = true;
     };
-  }, [authCode, nextPath, router]);
+  }, [nextPath, router]);
 
   return (
     <p className="rounded-lg border bg-muted/30 px-4 py-3 text-muted-foreground text-sm">
