@@ -50,10 +50,10 @@ const quickLinks = [
   },
   {
     description:
-      "Import rows from the configured Google Sheet into a dataset version.",
+      "Import rows from Google Sheets or a CSV upload into a dataset version.",
     href: routes.adminSheetImport,
     icon: FileSpreadsheet,
-    title: "Sheet import",
+    title: "Sheet & CSV import",
   },
   {
     description: "Activate dataset versions safely.",
