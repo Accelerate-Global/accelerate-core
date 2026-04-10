@@ -1,7 +1,8 @@
 import "server-only";
 
 import { createSign } from "node:crypto";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 import { z } from "zod";
 
@@ -28,8 +29,7 @@ const GOOGLE_WORKSPACE_DEFAULT_DETAIL =
   "Google Workspace connector is ready for read-only validation.";
 const A1_RANGE_PATTERN = /^([A-Za-z]+)?(\d+)?(?::([A-Za-z]+)?(\d+)?)?$/;
 
-const AGENT_DEBUG_LOG_PATH =
-  "/Users/blake/Documents/accelerate-global/accelerate-core/.cursor/debug-15f9c0.log";
+const AGENT_DEBUG_LOG_PATH = join(process.cwd(), ".cursor", "debug-15f9c0.log");
 
 const agentDebugIngest = (entry: {
   location: string;
@@ -43,6 +43,7 @@ const agentDebugIngest = (entry: {
     ...entry,
   };
   try {
+    mkdirSync(dirname(AGENT_DEBUG_LOG_PATH), { recursive: true });
     appendFileSync(AGENT_DEBUG_LOG_PATH, `${JSON.stringify(payload)}\n`);
   } catch {
     // ignore
@@ -1188,6 +1189,14 @@ export const getGoogleWorkspaceSourceStatus =
 export const getSafeGoogleWorkspaceSourceStatus =
   async (): Promise<GoogleWorkspaceSourceStatus> => {
     try {
+      // #region agent log
+      agentDebugIngest({
+        location:
+          "google-workspace/server.ts:getSafeGoogleWorkspaceSourceStatus",
+        message: "Google Workspace safe status check started",
+        hypothesisId: "flow",
+      });
+      // #endregion
       return await getGoogleWorkspaceSourceStatus();
     } catch (error) {
       if (error instanceof GoogleWorkspaceOperatorError) {
