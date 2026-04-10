@@ -128,6 +128,14 @@ export const placeholderDefinitions = {
     title: "Datasets",
     zone: "Admin",
   },
+  [routes.adminSheetImport]: {
+    description:
+      "Imports rows from a configured Google Sheet into a dataset version using the service account.",
+    futurePurpose:
+      "Operators can refresh dataset content from Sheets without leaving the admin shell.",
+    title: "Sheet import",
+    zone: "Admin",
+  },
   [routes.adminApis]: {
     description:
       "Operational API configuration has a stable admin route even though integrations are not wired up yet.",
