@@ -462,23 +462,6 @@ const requestGoogleAccessToken = async (
       },
       method: "POST",
     });
-    // #region agent log
-    fetch("http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "15f9c0",
-      },
-      body: JSON.stringify({
-        sessionId: "15f9c0",
-        location: "google-workspace/server.ts:requestGoogleAccessToken",
-        message: "Google OAuth token HTTP response",
-        data: { status: response.status, ok: response.ok },
-        timestamp: Date.now(),
-        hypothesisId: "A",
-      }),
-    }).catch(() => {});
-    // #endregion
   } catch (error) {
     if (error instanceof GoogleWorkspaceRequestTimeoutError) {
       throw createValidationError(
@@ -560,23 +543,6 @@ const fetchGoogleSpreadsheetMetadata = async (
 
   if (!response.ok) {
     const payload = await readJsonResponse(response);
-    // #region agent log
-    fetch("http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "15f9c0",
-      },
-      body: JSON.stringify({
-        sessionId: "15f9c0",
-        location: "google-workspace/server.ts:fetchGoogleSpreadsheetMetadata",
-        message: "Google Sheets metadata non-OK",
-        data: { status: response.status, hasPayload: payload != null },
-        timestamp: Date.now(),
-        hypothesisId: "B",
-      }),
-    }).catch(() => {});
-    // #endregion
 
     if (response.status === 404) {
       throw createValidationError(
@@ -684,23 +650,6 @@ const fetchGoogleDriveMetadata = async (
 
   if (!response.ok) {
     const payload = await readJsonResponse(response);
-    // #region agent log
-    fetch("http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "15f9c0",
-      },
-      body: JSON.stringify({
-        sessionId: "15f9c0",
-        location: "google-workspace/server.ts:fetchGoogleDriveMetadata",
-        message: "Google Drive metadata non-OK",
-        data: { status: response.status, hasPayload: payload != null },
-        timestamp: Date.now(),
-        hypothesisId: "D",
-      }),
-    }).catch(() => {});
-    // #endregion
 
     if (response.status === 404) {
       throw createValidationError(
@@ -1014,23 +963,6 @@ const fetchGooglePreviewValues = async ({
 
   if (!response.ok) {
     const payload = await readJsonResponse(response);
-    // #region agent log
-    fetch("http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Debug-Session-Id": "15f9c0",
-      },
-      body: JSON.stringify({
-        sessionId: "15f9c0",
-        location: "google-workspace/server.ts:fetchGooglePreviewValues",
-        message: "Google Sheets preview values non-OK",
-        data: { status: response.status, hasPayload: payload != null },
-        timestamp: Date.now(),
-        hypothesisId: "E",
-      }),
-    }).catch(() => {});
-    // #endregion
 
     if (response.status === 400) {
       throw createValidationError(
@@ -1197,34 +1129,6 @@ export const getSafeGoogleWorkspaceSourceStatus =
       if (error instanceof GoogleWorkspaceOperatorError) {
         return getStatusFromOperatorError(error);
       }
-
-      // #region agent log
-      {
-        const err = error instanceof Error ? error : new Error(String(error));
-        fetch(
-          "http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "X-Debug-Session-Id": "15f9c0",
-            },
-            body: JSON.stringify({
-              sessionId: "15f9c0",
-              location:
-                "google-workspace/server.ts:getSafeGoogleWorkspaceSourceStatus",
-              message: "Unexpected non-operator error",
-              data: {
-                name: err.name,
-                message: err.message.slice(0, 400),
-              },
-              timestamp: Date.now(),
-              hypothesisId: "C",
-            }),
-          }
-        ).catch(() => {});
-      }
-      // #endregion
 
       return createGoogleWorkspaceSourceStatus({
         details: [
