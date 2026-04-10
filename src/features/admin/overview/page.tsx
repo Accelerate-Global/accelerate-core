@@ -1,6 +1,7 @@
 import {
   ArrowRight,
   Database,
+  FileSpreadsheet,
   FolderKanban,
   KeyRound,
   MailPlus,
@@ -46,6 +47,13 @@ const quickLinks = [
     href: routes.adminDatasets,
     icon: Database,
     title: "Datasets",
+  },
+  {
+    description:
+      "Import rows from the configured Google Sheet into a dataset version.",
+    href: routes.adminSheetImport,
+    icon: FileSpreadsheet,
+    title: "Sheet import",
   },
   {
     description: "Activate dataset versions safely.",
