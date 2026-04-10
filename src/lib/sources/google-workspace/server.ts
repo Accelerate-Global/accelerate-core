@@ -1,9 +1,6 @@
 import "server-only";
 
 import { createSign } from "node:crypto";
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { z } from "zod";
 
@@ -29,68 +26,6 @@ const GOOGLE_WORKSPACE_SCOPES = [
 const GOOGLE_WORKSPACE_DEFAULT_DETAIL =
   "Google Workspace connector is ready for read-only validation.";
 const A1_RANGE_PATTERN = /^([A-Za-z]+)?(\d+)?(?::([A-Za-z]+)?(\d+)?)?$/;
-
-const findAccelerateCoreRepoRoot = (startDir: string): string => {
-  let dir = startDir;
-  for (let i = 0; i < 24; i += 1) {
-    const pkgPath = join(dir, "package.json");
-    if (existsSync(pkgPath)) {
-      try {
-        const raw = readFileSync(pkgPath, "utf8");
-        const pkg = JSON.parse(raw) as { name?: string };
-        if (pkg.name === "core") {
-          return dir;
-        }
-      } catch {
-        // keep walking
-      }
-    }
-    const parent = dirname(dir);
-    if (parent === dir) {
-      break;
-    }
-    dir = parent;
-  }
-  return startDir;
-};
-
-const AGENT_DEBUG_LOG_PATH = join(
-  findAccelerateCoreRepoRoot(dirname(fileURLToPath(import.meta.url))),
-  ".cursor",
-  "debug-15f9c0.log"
-);
-
-const agentDebugIngest = (entry: {
-  location: string;
-  message: string;
-  data?: Record<string, unknown>;
-  hypothesisId: string;
-}): void => {
-  const payload = {
-    sessionId: "15f9c0",
-    timestamp: Date.now(),
-    ...entry,
-  };
-  try {
-    mkdirSync(dirname(AGENT_DEBUG_LOG_PATH), { recursive: true });
-    appendFileSync(AGENT_DEBUG_LOG_PATH, `${JSON.stringify(payload)}\n`);
-  } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      // eslint-disable-next-line no-console -- debug session: surface EACCES / path issues
-      console.error("[agent-debug] NDJSON append failed", error);
-    }
-  }
-  fetch("http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Debug-Session-Id": "15f9c0",
-    },
-    body: JSON.stringify(payload),
-  }).catch(() => {
-    /* debug ingest is best-effort */
-  });
-};
 
 const googleWorkspaceEnvSchema = z.object({
   range: z.string().trim().min(1).optional(),
@@ -247,10 +182,24 @@ const getOptionalEnvValue = (value: string | undefined): string | undefined => {
   return normalizedValue ? normalizedValue : undefined;
 };
 
+const firstOptionalEnvValue = (
+  ...values: Array<string | undefined>
+): string | undefined => {
+  for (const value of values) {
+    const trimmed = getOptionalEnvValue(value);
+    if (trimmed) {
+      return trimmed;
+    }
+  }
+
+  return undefined;
+};
+
 const readGoogleWorkspaceEnv = () => {
   return googleWorkspaceEnvSchema.parse({
     range: getOptionalEnvValue(process.env.GOOGLE_WORKSPACE_SOURCE_RANGE),
-    serviceAccountJson: getOptionalEnvValue(
+    serviceAccountJson: firstOptionalEnvValue(
+      process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
       process.env.GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON
     ),
     sheetName: getOptionalEnvValue(
@@ -299,7 +248,7 @@ const getGoogleWorkspaceConfig = (): GoogleWorkspaceConfig => {
 
   if (!serviceAccountJson) {
     missingPrerequisites.push(
-      "Set GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON with the full service account JSON."
+      "Set GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON with the full service account JSON."
     );
   }
 
@@ -332,7 +281,7 @@ const getGoogleWorkspaceConfig = (): GoogleWorkspaceConfig => {
     throw createValidationError(
       ["The configured Google service account JSON could not be parsed."],
       [
-        "Store the exact downloaded Google service account JSON in GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON.",
+        "Store the exact downloaded Google service account JSON in GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON.",
       ],
       {
         sheetName: env.sheetName ?? null,
@@ -349,7 +298,7 @@ const getGoogleWorkspaceConfig = (): GoogleWorkspaceConfig => {
         "The configured Google service account JSON is missing required fields.",
       ],
       [
-        "Verify the service account JSON includes client_email and private_key before setting GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON.",
+        "Verify the service account JSON includes client_email and private_key before setting GOOGLE_SERVICE_ACCOUNT_JSON or GOOGLE_WORKSPACE_SERVICE_ACCOUNT_JSON.",
       ],
       {
         sheetName: env.sheetName ?? null,
@@ -527,14 +476,6 @@ const requestGoogleAccessToken = async (
       },
       method: "POST",
     });
-    // #region agent log
-    agentDebugIngest({
-      location: "google-workspace/server.ts:requestGoogleAccessToken",
-      message: "Google OAuth token HTTP response",
-      data: { status: response.status, ok: response.ok },
-      hypothesisId: "A",
-    });
-    // #endregion
   } catch (error) {
     if (error instanceof GoogleWorkspaceRequestTimeoutError) {
       throw createValidationError(
@@ -616,14 +557,6 @@ const fetchGoogleSpreadsheetMetadata = async (
 
   if (!response.ok) {
     const payload = await readJsonResponse(response);
-    // #region agent log
-    agentDebugIngest({
-      location: "google-workspace/server.ts:fetchGoogleSpreadsheetMetadata",
-      message: "Google Sheets metadata non-OK",
-      data: { status: response.status, hasPayload: payload != null },
-      hypothesisId: "B",
-    });
-    // #endregion
 
     if (response.status === 404) {
       throw createValidationError(
@@ -731,14 +664,6 @@ const fetchGoogleDriveMetadata = async (
 
   if (!response.ok) {
     const payload = await readJsonResponse(response);
-    // #region agent log
-    agentDebugIngest({
-      location: "google-workspace/server.ts:fetchGoogleDriveMetadata",
-      message: "Google Drive metadata non-OK",
-      data: { status: response.status, hasPayload: payload != null },
-      hypothesisId: "D",
-    });
-    // #endregion
 
     if (response.status === 404) {
       throw createValidationError(
@@ -1052,14 +977,6 @@ const fetchGooglePreviewValues = async ({
 
   if (!response.ok) {
     const payload = await readJsonResponse(response);
-    // #region agent log
-    agentDebugIngest({
-      location: "google-workspace/server.ts:fetchGooglePreviewValues",
-      message: "Google Sheets preview values non-OK",
-      data: { status: response.status, hasPayload: payload != null },
-      hypothesisId: "E",
-    });
-    // #endregion
 
     if (response.status === 400) {
       throw createValidationError(
@@ -1221,40 +1138,11 @@ export const getGoogleWorkspaceSourceStatus =
 export const getSafeGoogleWorkspaceSourceStatus =
   async (): Promise<GoogleWorkspaceSourceStatus> => {
     try {
-      // #region agent log
-      agentDebugIngest({
-        location:
-          "google-workspace/server.ts:getSafeGoogleWorkspaceSourceStatus",
-        message: "Google Workspace safe status check started",
-        data: {
-          cwd: process.cwd(),
-          logPath: AGENT_DEBUG_LOG_PATH,
-          repoRootSource: "import.meta.url",
-        },
-        hypothesisId: "flow",
-      });
-      // #endregion
       return await getGoogleWorkspaceSourceStatus();
     } catch (error) {
       if (error instanceof GoogleWorkspaceOperatorError) {
         return getStatusFromOperatorError(error);
       }
-
-      // #region agent log
-      {
-        const err = error instanceof Error ? error : new Error(String(error));
-        agentDebugIngest({
-          location:
-            "google-workspace/server.ts:getSafeGoogleWorkspaceSourceStatus",
-          message: "Unexpected non-operator error",
-          data: {
-            name: err.name,
-            message: err.message.slice(0, 400),
-          },
-          hypothesisId: "C",
-        });
-      }
-      // #endregion
 
       return createGoogleWorkspaceSourceStatus({
         details: [
