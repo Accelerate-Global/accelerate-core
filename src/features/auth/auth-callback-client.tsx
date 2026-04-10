@@ -27,20 +27,8 @@ const wait = async (delayMs: number): Promise<void> => {
 };
 
 interface AuthCallbackClientProps {
-  authCode?: string;
   nextPath: string;
 }
-
-const exchangeCodeForBrowserSession = async (
-  authCode: string
-): Promise<void> => {
-  const supabase = createBrowserSupabaseClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(authCode);
-
-  if (error) {
-    throw error;
-  }
-};
 
 const maybeSetSessionFromHash = async (): Promise<void> => {
   const hashParams = new URLSearchParams(window.location.hash.slice(1));
@@ -125,7 +113,7 @@ const finalizeBrowserSession = async (): Promise<void> => {
           },
           body: JSON.stringify({
             sessionId: "3fada2",
-            runId: "pre-fix",
+            runId: "post-fix",
             hypothesisId: "H5",
             location: "auth-callback-client.tsx:finalizeBrowserSession",
             message: "finalize API not ok",
@@ -150,10 +138,7 @@ const finalizeBrowserSession = async (): Promise<void> => {
   throw lastError ?? new Error("Failed to finalize session onboarding.");
 };
 
-export const AuthCallbackClient = ({
-  authCode,
-  nextPath,
-}: AuthCallbackClientProps) => {
+export const AuthCallbackClient = ({ nextPath }: AuthCallbackClientProps) => {
   const router = useRouter();
 
   useEffect(() => {
@@ -172,12 +157,11 @@ export const AuthCallbackClient = ({
           },
           body: JSON.stringify({
             sessionId: "3fada2",
-            runId: "pre-fix",
+            runId: "post-fix",
             hypothesisId: "H1",
             location: "auth-callback-client.tsx:run:start",
             message: "callback path selection",
             data: {
-              hasAuthCode: Boolean(authCode),
               hasHashAccessToken: hashParams.has("access_token"),
               hasHashRefreshToken: hashParams.has("refresh_token"),
             },
@@ -188,11 +172,7 @@ export const AuthCallbackClient = ({
       // #endregion
 
       try {
-        if (authCode) {
-          await exchangeCodeForBrowserSession(authCode);
-        } else {
-          await maybeSetSessionFromHash();
-        }
+        await maybeSetSessionFromHash();
 
         await ensureAuthenticatedBrowserSession();
 
@@ -209,7 +189,7 @@ export const AuthCallbackClient = ({
             },
             body: JSON.stringify({
               sessionId: "3fada2",
-              runId: "pre-fix",
+              runId: "post-fix",
               hypothesisId: "H2",
               location: "auth-callback-client.tsx:run:after-session",
               message: "browser session before finalize",
@@ -233,7 +213,7 @@ export const AuthCallbackClient = ({
             },
             body: JSON.stringify({
               sessionId: "3fada2",
-              runId: "pre-fix",
+              runId: "post-fix",
               hypothesisId: "H3",
               location: "auth-callback-client.tsx:run:finalize-ok",
               message: "finalize completed",
@@ -261,7 +241,7 @@ export const AuthCallbackClient = ({
             },
             body: JSON.stringify({
               sessionId: "3fada2",
-              runId: "pre-fix",
+              runId: "post-fix",
               hypothesisId: "H4",
               location: "auth-callback-client.tsx:run:catch",
               message: "callback flow error",
@@ -285,7 +265,7 @@ export const AuthCallbackClient = ({
     return () => {
       isCancelled = true;
     };
-  }, [authCode, nextPath, router]);
+  }, [nextPath, router]);
 
   return (
     <p className="rounded-lg border bg-muted/30 px-4 py-3 text-muted-foreground text-sm">
