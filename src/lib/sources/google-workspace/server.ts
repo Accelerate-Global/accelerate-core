@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSign } from "node:crypto";
+import { appendFileSync } from "node:fs";
 
 import { z } from "zod";
 
@@ -26,6 +27,37 @@ const GOOGLE_WORKSPACE_SCOPES = [
 const GOOGLE_WORKSPACE_DEFAULT_DETAIL =
   "Google Workspace connector is ready for read-only validation.";
 const A1_RANGE_PATTERN = /^([A-Za-z]+)?(\d+)?(?::([A-Za-z]+)?(\d+)?)?$/;
+
+const AGENT_DEBUG_LOG_PATH =
+  "/Users/blake/Documents/accelerate-global/accelerate-core/.cursor/debug-15f9c0.log";
+
+const agentDebugIngest = (entry: {
+  location: string;
+  message: string;
+  data?: Record<string, unknown>;
+  hypothesisId: string;
+}): void => {
+  const payload = {
+    sessionId: "15f9c0",
+    timestamp: Date.now(),
+    ...entry,
+  };
+  try {
+    appendFileSync(AGENT_DEBUG_LOG_PATH, `${JSON.stringify(payload)}\n`);
+  } catch {
+    // ignore
+  }
+  fetch("http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Debug-Session-Id": "15f9c0",
+    },
+    body: JSON.stringify(payload),
+  }).catch(() => {
+    /* debug ingest is best-effort */
+  });
+};
 
 const googleWorkspaceEnvSchema = z.object({
   range: z.string().trim().min(1).optional(),
@@ -462,6 +494,14 @@ const requestGoogleAccessToken = async (
       },
       method: "POST",
     });
+    // #region agent log
+    agentDebugIngest({
+      location: "google-workspace/server.ts:requestGoogleAccessToken",
+      message: "Google OAuth token HTTP response",
+      data: { status: response.status, ok: response.ok },
+      hypothesisId: "A",
+    });
+    // #endregion
   } catch (error) {
     if (error instanceof GoogleWorkspaceRequestTimeoutError) {
       throw createValidationError(
@@ -543,6 +583,14 @@ const fetchGoogleSpreadsheetMetadata = async (
 
   if (!response.ok) {
     const payload = await readJsonResponse(response);
+    // #region agent log
+    agentDebugIngest({
+      location: "google-workspace/server.ts:fetchGoogleSpreadsheetMetadata",
+      message: "Google Sheets metadata non-OK",
+      data: { status: response.status, hasPayload: payload != null },
+      hypothesisId: "B",
+    });
+    // #endregion
 
     if (response.status === 404) {
       throw createValidationError(
@@ -650,6 +698,14 @@ const fetchGoogleDriveMetadata = async (
 
   if (!response.ok) {
     const payload = await readJsonResponse(response);
+    // #region agent log
+    agentDebugIngest({
+      location: "google-workspace/server.ts:fetchGoogleDriveMetadata",
+      message: "Google Drive metadata non-OK",
+      data: { status: response.status, hasPayload: payload != null },
+      hypothesisId: "D",
+    });
+    // #endregion
 
     if (response.status === 404) {
       throw createValidationError(
@@ -963,6 +1019,14 @@ const fetchGooglePreviewValues = async ({
 
   if (!response.ok) {
     const payload = await readJsonResponse(response);
+    // #region agent log
+    agentDebugIngest({
+      location: "google-workspace/server.ts:fetchGooglePreviewValues",
+      message: "Google Sheets preview values non-OK",
+      data: { status: response.status, hasPayload: payload != null },
+      hypothesisId: "E",
+    });
+    // #endregion
 
     if (response.status === 400) {
       throw createValidationError(
@@ -1129,6 +1193,22 @@ export const getSafeGoogleWorkspaceSourceStatus =
       if (error instanceof GoogleWorkspaceOperatorError) {
         return getStatusFromOperatorError(error);
       }
+
+      // #region agent log
+      {
+        const err = error instanceof Error ? error : new Error(String(error));
+        agentDebugIngest({
+          location:
+            "google-workspace/server.ts:getSafeGoogleWorkspaceSourceStatus",
+          message: "Unexpected non-operator error",
+          data: {
+            name: err.name,
+            message: err.message.slice(0, 400),
+          },
+          hypothesisId: "C",
+        });
+      }
+      // #endregion
 
       return createGoogleWorkspaceSourceStatus({
         details: [
