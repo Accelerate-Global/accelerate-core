@@ -41,7 +41,7 @@ const routeTitles = {
   [routes.adminInvites]: "Invites",
   [routes.adminPermissions]: "Permissions",
   [routes.adminDatasets]: "Datasets",
-  [routes.adminSheetImport]: "Sheet import",
+  [routes.adminSheetImport]: "Sheet & CSV import",
   [routes.adminApis]: "APIs",
   [routes.adminIngestionRuns]: "Ingestion Runs",
   [routes.adminPipelineRuns]: "Pipeline Runs",

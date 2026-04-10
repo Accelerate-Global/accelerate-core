@@ -130,10 +130,10 @@ export const placeholderDefinitions = {
   },
   [routes.adminSheetImport]: {
     description:
-      "Imports rows from a configured Google Sheet into a dataset version using the service account.",
+      "Imports rows from a configured Google Sheet or an uploaded CSV into a dataset version.",
     futurePurpose:
-      "Operators can refresh dataset content from Sheets without leaving the admin shell.",
-    title: "Sheet import",
+      "Operators can refresh dataset content from Sheets or files without leaving the admin shell.",
+    title: "Sheet & CSV import",
     zone: "Admin",
   },
   [routes.adminApis]: {
