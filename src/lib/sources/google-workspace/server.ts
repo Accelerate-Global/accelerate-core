@@ -1,8 +1,9 @@
 import "server-only";
 
 import { createSign } from "node:crypto";
-import { appendFileSync, mkdirSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { z } from "zod";
 
@@ -29,7 +30,35 @@ const GOOGLE_WORKSPACE_DEFAULT_DETAIL =
   "Google Workspace connector is ready for read-only validation.";
 const A1_RANGE_PATTERN = /^([A-Za-z]+)?(\d+)?(?::([A-Za-z]+)?(\d+)?)?$/;
 
-const AGENT_DEBUG_LOG_PATH = join(process.cwd(), ".cursor", "debug-15f9c0.log");
+const findAccelerateCoreRepoRoot = (startDir: string): string => {
+  let dir = startDir;
+  for (let i = 0; i < 24; i += 1) {
+    const pkgPath = join(dir, "package.json");
+    if (existsSync(pkgPath)) {
+      try {
+        const raw = readFileSync(pkgPath, "utf8");
+        const pkg = JSON.parse(raw) as { name?: string };
+        if (pkg.name === "core") {
+          return dir;
+        }
+      } catch {
+        // keep walking
+      }
+    }
+    const parent = dirname(dir);
+    if (parent === dir) {
+      break;
+    }
+    dir = parent;
+  }
+  return startDir;
+};
+
+const AGENT_DEBUG_LOG_PATH = join(
+  findAccelerateCoreRepoRoot(dirname(fileURLToPath(import.meta.url))),
+  ".cursor",
+  "debug-15f9c0.log"
+);
 
 const agentDebugIngest = (entry: {
   location: string;
@@ -45,8 +74,11 @@ const agentDebugIngest = (entry: {
   try {
     mkdirSync(dirname(AGENT_DEBUG_LOG_PATH), { recursive: true });
     appendFileSync(AGENT_DEBUG_LOG_PATH, `${JSON.stringify(payload)}\n`);
-  } catch {
-    // ignore
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      // eslint-disable-next-line no-console -- debug session: surface EACCES / path issues
+      console.error("[agent-debug] NDJSON append failed", error);
+    }
   }
   fetch("http://127.0.0.1:7415/ingest/07b71db7-16df-4bc6-97e9-ca1555981d7e", {
     method: "POST",
@@ -1194,6 +1226,11 @@ export const getSafeGoogleWorkspaceSourceStatus =
         location:
           "google-workspace/server.ts:getSafeGoogleWorkspaceSourceStatus",
         message: "Google Workspace safe status check started",
+        data: {
+          cwd: process.cwd(),
+          logPath: AGENT_DEBUG_LOG_PATH,
+          repoRootSource: "import.meta.url",
+        },
         hypothesisId: "flow",
       });
       // #endregion
